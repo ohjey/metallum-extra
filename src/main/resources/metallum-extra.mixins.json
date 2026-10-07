@@ -9,11 +9,13 @@
     "MetalCommandEncoderMixin",
     "MetalCrossShaderCompilerMixin",
     "MetalDeviceMixin",
+    "MetalRenderPassMixin",
     "MetalSurfaceMixin",
     "MTLBuiltinPipelinesMixin",
     "MTLCommandBufferMixin",
     "MTLDeviceMixin",
     "RotatingSectionStorageMixin",
+    "SodiumChunkRendererMixin",
     "SodiumNativeBufferMixin"
   ],
   "injectors": {

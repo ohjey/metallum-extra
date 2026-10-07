@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "metallum-extra",
+  "version": "${version}",
+  "name": "Metallum Extra",
+  "description": "Add-on for Metallum: frame-hitch profiler and stutter fixes for the Metal backend on Apple Silicon.",
+  "authors": ["Metallum Extra contributors"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.metallumextra.MetallumExtra"],
+    "modmenu": ["com.metallumextra.ModMenuIntegration"]
+  },
+  "mixins": ["metallum-extra.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.2",
+    "minecraft": "~26.2-",
+    "java": ">=25",
+    "metallum": "${metallum_version}"
+  },
+  "custom": {
+    "metallum-extra:note": "Hooks Metallum internals; built for exactly one Metallum version."
+  }
+}

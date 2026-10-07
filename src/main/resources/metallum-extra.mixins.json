@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "package": "com.metallumextra.mixin",
+  "plugin": "com.metallumextra.mixin.ExtraMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "CAMetalLayerMixin",
+    "MetalCommandEncoderMixin",
+    "MetalCrossShaderCompilerMixin",
+    "MetalDeviceMixin",
+    "MetalSurfaceMixin",
+    "MTLBuiltinPipelinesMixin",
+    "MTLCommandBufferMixin",
+    "MTLDeviceMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

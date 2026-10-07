@@ -1,0 +1,60 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = "${project.mod_version}+metallum.${project.metallum_version}"
+group = project.maven_group
+
+base {
+	archivesName = 'metallum-extra'
+}
+
+repositories {
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Modrinth'
+				url = 'https://api.modrinth.com/maven'
+			}
+		}
+		filter {
+			includeGroup 'maven.modrinth'
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Metallum itself (from Modrinth). Needed at compile time because we hook its internals,
+	// and at runtime so `./gradlew runClient` launches with Metal.
+	implementation "maven.modrinth:metallum-mc:${project.metallum_version}"
+
+	// Optional: only for the in-game settings screen entry in Mod Menu. Not needed at runtime.
+	compileOnly "maven.modrinth:modmenu:${project.modmenu_version}"
+}
+
+processResources {
+	inputs.property 'version', project.version
+	inputs.property 'metallum_version', project.metallum_version
+
+	filesMatching('fabric.mod.json') {
+		expand 'version': inputs.properties.version, 'metallum_version': inputs.properties.metallum_version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	from('LICENSE') {
+		rename { "${it}_${project.base.archivesName.get()}" }
+	}
+}

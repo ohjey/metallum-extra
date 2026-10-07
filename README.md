@@ -29,6 +29,8 @@ Output:
   - `hitches-<time>.csv`: one row for every hitch, with the full breakdown
   - `hitch-stacks-<time>.txt`: what the render thread was doing during each long frame (sampled stacks)
   - `profile-<time>.txt`: for every summary window, where the render thread spent its time (sampled ~50×/s)
+  - `gpu-slow-<time>.csv`: every frame the GPU took 8 ms or more over, with Metal's own timings (time queued, time
+    executing) and what that frame contained (passes, allocations, whether it was presented)
   - `summary-<time>.csv`: one row per summary window
   - `runtime-pipelines-<time>.txt`: pipelines that had to be compiled *during gameplay*.
     This list feeds the shader warm-up cache planned for 0.2.

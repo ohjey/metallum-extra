@@ -71,6 +71,16 @@ public final class FrameProfiler {
     private static long windowRenderPasses;
     private static long windowBlitPasses;
     private static int windowPresented;
+    private static boolean shownThisFrame;
+
+    // ---- GPU timing (from Metal's command buffer timestamps) ----
+    private static final double GPU_SLOW_MS = 8.0;
+    private static int windowGpuFrames;
+    private static double windowGpuExecMs;
+    private static double windowGpuExecMaxMs;
+    private static double windowGpuQueueMaxMs;
+    private static double frameGpuExecMaxMs;
+    private static double frameGpuQueueMaxMs;
     private static int windowSkipped;
     private static final int[] windowCauseCounts = new int[Cause.values().length];
 
@@ -84,6 +94,7 @@ public final class FrameProfiler {
     private static BufferedWriter pipelinesTxt;
     private static BufferedWriter stacksTxt;
     private static BufferedWriter profileTxt;
+    private static BufferedWriter gpuCsv;
     private static final Set<String> runtimePipelines = new HashSet<>();
 
     enum Cause { SHADER_COMPILE, GPU_WAIT, DRAWABLE_WAIT, GC_PAUSE, ALLOCATION, CPU_OTHER }
@@ -193,8 +204,47 @@ public final class FrameProfiler {
     /** Non-blocking present: whether this frame got a swapchain image (shown) or was skipped. */
     public static void framePresented(final boolean shown) {
         if (!ENABLED) return;
-        if (shown) windowPresented++;
+        if (shown) {
+            windowPresented++;
+            shownThisFrame = true;
+        }
         else windowSkipped++;
+    }
+
+    /** Packs what this frame put into its command buffer, so a slow GPU frame can be matched to its contents. */
+    public static long frameStatsForGpu() {
+        if (!onRenderThread()) return -1L;
+        return ((long) Math.min(renderPasses, 0xFFFF) << 48) | ((long) Math.min(blitPasses, 0xFFFF) << 32)
+                | ((long) Math.min(bufferAllocs, 0x7FFF) << 16) | ((long) Math.min(textureAllocs, 0x7FFF) << 1) | (shownThisFrame ? 1L : 0L);
+    }
+
+    /**
+     * Called when a finished command buffer is released. Times are Metal's own (seconds, mach time):
+     * queue = commit until the driver scheduled it, exec = GPU start to GPU end.
+     */
+    public static void gpuFrameCompleted(final long commitNs, final long stats, final double kernelStart, final double kernelEnd,
+                                         final double gpuStart, final double gpuEnd) {
+        if (!onRenderThread() || renderThread == null || stats < 0L || gpuEnd <= 0.0) return;
+        double execMs = (gpuEnd - gpuStart) * 1000.0;
+        double kernelMs = (kernelEnd - kernelStart) * 1000.0;
+        double queueMs = (kernelStart - commitNs / 1e9) * 1000.0;
+        if (execMs < 0.0 || execMs > 60_000.0) return;
+        // System.nanoTime() and Metal share the mach clock on macOS; if that ever stops holding, drop the value.
+        if (queueMs < -5.0 || queueMs > 60_000.0) queueMs = Double.NaN;
+
+        windowGpuFrames++;
+        windowGpuExecMs += execMs;
+        windowGpuExecMaxMs = Math.max(windowGpuExecMaxMs, execMs);
+        frameGpuExecMaxMs = Math.max(frameGpuExecMaxMs, execMs);
+        if (!Double.isNaN(queueMs)) {
+            windowGpuQueueMaxMs = Math.max(windowGpuQueueMaxMs, queueMs);
+            frameGpuQueueMaxMs = Math.max(frameGpuQueueMaxMs, queueMs);
+        }
+        if (execMs >= GPU_SLOW_MS || queueMs >= GPU_SLOW_MS) {
+            writeLine(gpuCsv, String.format(Locale.ROOT, "%.2f,%.2f,%.2f,%.2f,%d,%d,%d,%d,%d",
+                    (commitNs - sessionStart) / 1e9, queueMs, kernelMs, execMs,
+                    (stats >>> 48) & 0xFFFF, (stats >>> 32) & 0xFFFF, (stats >>> 16) & 0x7FFF, (stats >>> 1) & 0x7FFF, stats & 1L));
+        }
     }
 
     /** Logged on every swapchain (re)configure: FIFO means the display's refresh rate caps the frame rate. */
@@ -281,10 +331,10 @@ public final class FrameProfiler {
         double t = (lastFrameEnd - sessionStart) / 1e9;
         String compiled = String.join("; ", compiledThisFrame);
         writeLine(hitchCsv, String.format(Locale.ROOT,
-                "%.2f,%.2f,%.2f,%s,%.2f,%d,%.2f,%.2f,%d,%.2f,%d,%d,%d,%d,%d,%d,%.2f,\"%s\"",
+                "%.2f,%.2f,%.2f,%s,%.2f,%d,%.2f,%.2f,%d,%.2f,%d,%d,%d,%d,%d,%d,%.2f,\"%s\",%.2f,%.2f",
                 t, frameMs, avgMs, cause, compileMs, compiles, gpuMs, drawMs, gcMs, allocMs,
                 bufferAllocs, textureAllocs, renderPasses, blitPasses, directUploads, copyUploads, otherMs,
-                compiled.replace("\"", "'")));
+                compiled.replace("\"", "'"), frameGpuExecMaxMs, frameGpuQueueMaxMs));
 
         String stacks = HitchSampler.report(frameStart, 3);
         if (stacks != null) {
@@ -330,20 +380,23 @@ public final class FrameProfiler {
             }
             MetallumExtra.LOGGER.info(String.format(Locale.ROOT,
                     "[Metallum Extra] last %.0fs: avg %.0f fps | median %.2fms | 1%% low %.0f fps | 0.1%% low %.0f fps | worst %.1fms | hitches %d%s | compiles %d (%.0fms) | GC pauses %d (%dms)"
-                            + " | per frame: GPU wait %.2fms, drawable wait %.2fms, passes %.1f render / %.1f copy | shown %.0f/s, skipped %.0f/s",
+                            + " | per frame: GPU wait %.2fms, drawable wait %.2fms, passes %.1f render / %.1f copy | shown %.0f/s, skipped %.0f/s"
+                            + " | GPU exec avg %.2fms max %.1fms, queue max %.1fms",
                     seconds, avgFps, median, low1, low01, worst, windowHitches,
                     causes.isEmpty() ? "" : " (" + causes + ")",
                     windowCompiles, windowCompileNs / 1e6, windowGcPauses, windowGcMs,
                     windowGpuWaitNs / 1e6 / n, windowDrawableNs / 1e6 / n,
                     (double) windowRenderPasses / n, (double) windowBlitPasses / n,
-                    windowPresented / seconds, windowSkipped / seconds));
+                    windowPresented / seconds, windowSkipped / seconds,
+                    windowGpuFrames == 0 ? 0.0 : windowGpuExecMs / windowGpuFrames, windowGpuExecMaxMs, windowGpuQueueMaxMs));
             writeLine(summaryCsv, String.format(Locale.ROOT,
-                    "%.1f,%d,%.1f,%.3f,%.1f,%.1f,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.3f,%.3f,%.1f,%.1f,%d,%d",
+                    "%.1f,%d,%.1f,%.3f,%.1f,%.1f,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.3f,%.3f,%.1f,%.1f,%d,%d,%.3f,%.2f,%.2f",
                     (now - sessionStart) / 1e9, n, avgFps, median, low1, low01, worst, windowHitches,
                     windowCauseCounts[0], windowCauseCounts[1], windowCauseCounts[2], windowCauseCounts[3],
                     windowCauseCounts[4], windowCauseCounts[5], windowCompiles, windowGcMs,
                     windowGpuWaitNs / 1e6 / n, windowDrawableNs / 1e6 / n,
-                    (double) windowRenderPasses / n, (double) windowBlitPasses / n, windowPresented, windowSkipped));
+                    (double) windowRenderPasses / n, (double) windowBlitPasses / n, windowPresented, windowSkipped,
+                    windowGpuFrames == 0 ? 0.0 : windowGpuExecMs / windowGpuFrames, windowGpuExecMaxMs, windowGpuQueueMaxMs));
             String[] where = HitchSampler.drainBackground(10);
             writeLine(profileTxt, String.format(Locale.ROOT, "t=%.0fs avg %.0f fps median %.2fms", (now - sessionStart) / 1e9, avgFps, median));
             writeLine(profileTxt, "  phases: " + where[0]);
@@ -364,6 +417,10 @@ public final class FrameProfiler {
         windowRenderPasses = 0L;
         windowBlitPasses = 0L;
         windowPresented = 0;
+        windowGpuFrames = 0;
+        windowGpuExecMs = 0.0;
+        windowGpuExecMaxMs = 0.0;
+        windowGpuQueueMaxMs = 0.0;
         windowSkipped = 0;
         Arrays.fill(windowCauseCounts, 0);
     }
@@ -387,6 +444,9 @@ public final class FrameProfiler {
         directUploads = 0;
         copyUploads = 0;
         compiledThisFrame.clear();
+        shownThisFrame = false;
+        frameGpuExecMaxMs = 0.0;
+        frameGpuQueueMaxMs = 0.0;
     }
 
     // ===================================================================== output
@@ -402,14 +462,16 @@ public final class FrameProfiler {
             String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
             hitchCsv = Files.newBufferedWriter(dir.resolve("hitches-" + stamp + ".csv"));
             writeLine(hitchCsv, "time_s,frame_ms,normal_ms,cause,compile_ms,compiles,gpu_wait_ms,drawable_wait_ms,gc_ms,alloc_ms,"
-                    + "buffers_allocated,textures_allocated,render_passes,copy_passes,direct_uploads,copy_uploads,other_cpu_ms,compiled_pipelines");
+                    + "buffers_allocated,textures_allocated,render_passes,copy_passes,direct_uploads,copy_uploads,other_cpu_ms,compiled_pipelines,gpu_exec_ms_of_awaited,gpu_queue_ms_of_awaited");
             summaryCsv = Files.newBufferedWriter(dir.resolve("summary-" + stamp + ".csv"));
             writeLine(summaryCsv, "time_s,frames,avg_fps,median_ms,low1_fps,low01_fps,worst_ms,hitches,"
                     + "hitch_compile,hitch_gpu_wait,hitch_drawable,hitch_gc,hitch_alloc,hitch_cpu_other,compiles,gc_ms,"
-                    + "avg_gpu_wait_ms,avg_drawable_wait_ms,avg_render_passes,avg_copy_passes,frames_shown,frames_skipped");
+                    + "avg_gpu_wait_ms,avg_drawable_wait_ms,avg_render_passes,avg_copy_passes,frames_shown,frames_skipped,avg_gpu_exec_ms,max_gpu_exec_ms,max_gpu_queue_ms");
             pipelinesTxt = Files.newBufferedWriter(dir.resolve("runtime-pipelines-" + stamp + ".txt"));
             stacksTxt = Files.newBufferedWriter(dir.resolve("hitch-stacks-" + stamp + ".txt"));
             profileTxt = Files.newBufferedWriter(dir.resolve("profile-" + stamp + ".txt"));
+            gpuCsv = Files.newBufferedWriter(dir.resolve("gpu-slow-" + stamp + ".csv"));
+            writeLine(gpuCsv, "commit_time_s,queue_ms,kernel_ms,gpu_exec_ms,render_passes,copy_passes,buffers_allocated,textures_allocated,presented");
             Runtime.getRuntime().addShutdownHook(new Thread(FrameProfiler::flush, "metallum-extra-flush"));
             MetallumExtra.LOGGER.info("[Metallum Extra] Profiler output: {}", dir);
         } catch (IOException e) {
@@ -427,7 +489,7 @@ public final class FrameProfiler {
     }
 
     private static synchronized void flush() {
-        for (BufferedWriter w : new BufferedWriter[]{hitchCsv, summaryCsv, pipelinesTxt, stacksTxt, profileTxt}) {
+        for (BufferedWriter w : new BufferedWriter[]{hitchCsv, summaryCsv, pipelinesTxt, stacksTxt, profileTxt, gpuCsv}) {
             if (w == null) continue;
             try {
                 w.flush();

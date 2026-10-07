@@ -59,11 +59,30 @@ and emptying it in one go stalls the render thread for 50-130 ms (seen every 25-
 Metallum Extra gives that work a small time budget per frame and leaves the rest for the next frames.
 The profiler summary reports `cleanup deferred N frames`.
 
+### Compatibility: Distant Horizons (`compat.distantHorizons`)
+Distant Horizons 3.3.x asks the game which graphics backend it is on and treats anything that is not "Vulkan" as
+OpenGL, so on Metallum it takes its OpenGL path and crashes. Its Vulkan path is written against the game's own
+rendering API, so Metallum Extra answers "Metal" the same way as "Vulkan". With that, DH starts, compiles all of
+its render pipelines on Metal and runs. Experimental; needs a restart to change.
+
+## Settings in game
+The same settings appear in two places, with the same names:
+- **Video Settings → Metallum Extra** (when Sodium is installed)
+- **Mods → Metallum Extra → settings button** (when Mod Menu is installed)
+
+| In game | Config key |
+|---|---|
+| Unlocked Frame Rate | `fix.nonBlockingPresent` |
+| Smooth Chunk Crossing | `fix.fastSectionRecenter` |
+| Smooth Memory Cleanup | `fix.spreadSodiumCleanup` |
+| Faster Small Uploads | `fix.directBufferUpload` |
+| Distant Horizons Support | `compat.distantHorizons` |
+
 ## Config
 `config/metallum-extra.properties` is created on first launch. Restart the game after you edit it.
 
-With [Mod Menu](https://modrinth.com/mod/modmenu) installed, the fixes can also be switched on and off while the game
-is running: **Mods → Metallum Extra → settings button**. The change applies immediately and is saved to the file.
+The smoothness settings switch on and off while the game is running and are saved to this file; see *Settings in
+game* above.
 
 ## Building
 You need **JDK 25** (the Java version Minecraft 26.2 uses).

@@ -36,8 +36,10 @@ dependencies {
 
 	// Dev client only: run with Sodium (and the Fabric API it needs), since one fix targets Sodium and that is how
 	// Metallum is normally used. Not bundled and not required.
-	runtimeOnly "maven.modrinth:sodium:${project.sodium_version}"
+	// Sodium is also compiled against for its video-settings API (the page is only loaded when Sodium is present).
+	implementation "maven.modrinth:sodium:${project.sodium_version}"
 	runtimeOnly "maven.modrinth:fabric-api:${project.fabric_api_version}"
+	runtimeOnly "maven.modrinth:distanthorizons:${project.distant_horizons_version}"
 }
 
 processResources {

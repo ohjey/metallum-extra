@@ -10,9 +10,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
-import java.util.function.Consumer;
-
-/** In-game settings (opened from Mod Menu). The fix toggles take effect immediately and are saved to the config file. */
+/**
+ * In-game settings (opened from Mod Menu). The same settings also appear in Sodium's video settings.
+ * Smoothness toggles take effect immediately; everything is saved to the config file.
+ */
 public final class ExtraConfigScreen extends Screen {
     private static final int ROW_WIDTH = 310;
 
@@ -26,28 +27,17 @@ public final class ExtraConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        ExtraConfig config = ExtraConfig.get();
         layout.addTitleHeader(title, font);
 
-        LinearLayout rows = layout.addToContents(LinearLayout.vertical().spacing(8));
-        rows.addChild(toggle("Non-blocking present",
-                "With vsync off, never stall a frame waiting for the display. Frames that finish while macOS has no "
-                        + "swapchain image free are not shown (the next one is). No effect with vsync on.",
-                config.nonBlockingPresent, config::setNonBlockingPresent));
-        rows.addChild(toggle("Fast section re-centering",
-                "Minecraft rescans every section slot in render distance each time you cross into a new chunk "
-                        + "section. This updates only the ones that changed. Matters at very high render distances.",
-                config.fastSectionRecenter, config::setFastSectionRecenter));
-        rows.addChild(toggle("Spread Sodium buffer cleanup",
-                "Sodium empties a queue of finished chunk-mesh buffers in one go after each garbage collection, "
-                        + "which can stall a frame while chunks stream in. This spreads it over the following frames.",
-                config.spreadSodiumCleanup, config::setSpreadSodiumCleanup));
-        rows.addChild(toggle("Direct buffer upload",
-                "Fill CPU-visible buffers directly when they are created instead of breaking the frame for a GPU copy.",
-                config.directBufferUpload, config::setDirectBufferUpload));
+        LinearLayout rows = layout.addToContents(LinearLayout.vertical().spacing(6));
+        for (Settings.Toggle toggle : Settings.smoothness()) {
+            rows.addChild(button(toggle));
+        }
+        for (Settings.Toggle toggle : Settings.compatibility()) {
+            rows.addChild(button(toggle));
+        }
         rows.addChild(new MultiLineTextWidget(Component.literal(
-                "Changes apply immediately. Profiler is " + (config.profilerEnabled ? "on" : "off")
-                        + " (edit config/metallum-extra.properties and restart to change)."), font)
+                "Hover a setting to see what it does. Changes apply right away unless marked (restart)."), font)
                 .setMaxWidth(ROW_WIDTH).setCentered(true));
 
         layout.addToFooter(Button.builder(CommonComponents.GUI_DONE, button -> onClose()).width(200).build());
@@ -55,10 +45,11 @@ public final class ExtraConfigScreen extends Screen {
         repositionElements();
     }
 
-    private static CycleButton<Boolean> toggle(final String name, final String tooltip, final boolean value, final Consumer<Boolean> setter) {
-        return CycleButton.onOffBuilder(value)
-                .withTooltip(v -> Tooltip.create(Component.literal(tooltip)))
-                .create(0, 0, ROW_WIDTH, 20, Component.literal(name), (button, v) -> setter.accept(v));
+    private static CycleButton<Boolean> button(final Settings.Toggle toggle) {
+        String name = toggle.needsRestart() ? toggle.name() + " (restart)" : toggle.name();
+        return CycleButton.onOffBuilder(toggle.getter().getAsBoolean())
+                .withTooltip(v -> Tooltip.create(Component.literal(toggle.tooltip())))
+                .create(0, 0, ROW_WIDTH, 20, Component.literal(name), (button, v) -> toggle.setter().accept(v));
     }
 
     @Override

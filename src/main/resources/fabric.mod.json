@@ -9,7 +9,8 @@
   "environment": "client",
   "entrypoints": {
     "client": ["com.metallumextra.MetallumExtra"],
-    "modmenu": ["com.metallumextra.ModMenuIntegration"]
+    "modmenu": ["com.metallumextra.ModMenuIntegration"],
+    "sodium:config_api_user": ["com.metallumextra.SodiumOptionsIntegration"]
   },
   "mixins": ["metallum-extra.mixins.json"],
   "depends": {

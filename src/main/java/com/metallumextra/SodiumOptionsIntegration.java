@@ -1,0 +1,44 @@
+package com.metallumextra;
+
+import net.caffeinemc.mods.sodium.api.config.ConfigEntryPoint;
+import net.caffeinemc.mods.sodium.api.config.option.OptionFlag;
+import net.caffeinemc.mods.sodium.api.config.option.OptionImpact;
+import net.caffeinemc.mods.sodium.api.config.structure.BooleanOptionBuilder;
+import net.caffeinemc.mods.sodium.api.config.structure.ConfigBuilder;
+import net.caffeinemc.mods.sodium.api.config.structure.OptionGroupBuilder;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+
+import java.util.List;
+
+/** Adds a Metallum Extra page to Sodium's video settings. Only loaded when Sodium is installed (it calls this entrypoint). */
+public final class SodiumOptionsIntegration implements ConfigEntryPoint {
+    @Override
+    public void registerConfigLate(final ConfigBuilder builder) {
+        builder.registerOwnModOptions()
+                .addPage(builder.createOptionPage()
+                        .setName(Component.literal("Metallum Extra"))
+                        .addOptionGroup(group(builder, "Smoothness", Settings.smoothness()))
+                        .addOptionGroup(group(builder, "Mod Compatibility", Settings.compatibility())));
+    }
+
+    private static OptionGroupBuilder group(final ConfigBuilder builder, final String name, final List<Settings.Toggle> toggles) {
+        OptionGroupBuilder group = builder.createOptionGroup().setName(Component.literal(name));
+        for (Settings.Toggle toggle : toggles) {
+            BooleanOptionBuilder option = builder.createBooleanOption(Identifier.fromNamespaceAndPath("metallum-extra", toggle.id()))
+                    .setName(Component.literal(toggle.name()))
+                    .setTooltip(Component.literal(toggle.tooltip()))
+                    .setImpact(OptionImpact.valueOf(toggle.impact().name()))
+                    .setDefaultValue(true)
+                    // The setters apply the change and write the config file themselves.
+                    .setBinding(toggle.setter(), toggle.getter()::getAsBoolean)
+                    .setStorageHandler(() -> {
+                    });
+            if (toggle.needsRestart()) {
+                option.setFlags(OptionFlag.REQUIRES_GAME_RESTART);
+            }
+            group.addOption(option);
+        }
+        return group;
+    }
+}

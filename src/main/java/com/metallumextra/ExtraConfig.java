@@ -35,6 +35,8 @@ public final class ExtraConfig {
     public volatile boolean fastSectionRecenter;
     /** Sodium: empty its freed-buffer queue a little each frame instead of all at once after a GC cycle. */
     public volatile boolean spreadSodiumCleanup;
+    /** Distant Horizons: make it use its backend-neutral renderer on Metal. Read once at startup. */
+    public volatile boolean distantHorizonsSupport;
 
     private Path file;
 
@@ -48,6 +50,7 @@ public final class ExtraConfig {
         this.nonBlockingPresent = bool(p, "fix.nonBlockingPresent", true);
         this.fastSectionRecenter = bool(p, "fix.fastSectionRecenter", true);
         this.spreadSodiumCleanup = bool(p, "fix.spreadSodiumCleanup", true);
+        this.distantHorizonsSupport = bool(p, "compat.distantHorizons", true);
     }
 
     /** Live toggles (from the in-game screen): take effect immediately and are written back to the file. */
@@ -67,6 +70,12 @@ public final class ExtraConfig {
         this.spreadSodiumCleanup = value;
         save(file);
         MetallumExtra.LOGGER.info("[Metallum Extra] spreadSodiumCleanup={}", value);
+    }
+
+    public void setDistantHorizonsSupport(final boolean value) {
+        this.distantHorizonsSupport = value;
+        save(file);
+        MetallumExtra.LOGGER.info("[Metallum Extra] distantHorizonsSupport={} (takes effect after a restart)", value);
     }
 
     public void setNonBlockingPresent(final boolean value) {
@@ -101,7 +110,8 @@ public final class ExtraConfig {
     private void save(final Path file) {
         String text = """
                 # Metallum Extra configuration. Restart the game after editing this file.
-                # The fix.* options can also be switched live in game: Mods > Metallum Extra (needs Mod Menu).
+                # The same options are in game: Video Settings > Metallum Extra (with Sodium), or Mods > Metallum Extra
+                # (with Mod Menu). The fix.* ones switch live.
 
                 # --- Frame-hitch profiler ---
                 # Logs a breakdown of every stutter frame to the game log and to
@@ -130,7 +140,13 @@ public final class ExtraConfig {
                 # collection, which can take 50-130 ms while chunks stream in. This spreads that work
                 # over the following frames. No effect without Sodium.
                 fix.spreadSodiumCleanup=%s
-                """.formatted(profilerEnabled, hitchMinMs, hitchMultiplier, summarySeconds, maxHitchLogsPerSummary, directBufferUpload, nonBlockingPresent, fastSectionRecenter, spreadSodiumCleanup);
+
+                # --- Mod compatibility (restart needed) ---
+                # Distant Horizons only knows OpenGL and Vulkan and crashes on Metal. This makes it use
+                # its Vulkan-style renderer, which is written against the game's own rendering API.
+                compat.distantHorizons=%s
+                """.formatted(profilerEnabled, hitchMinMs, hitchMultiplier, summarySeconds, maxHitchLogsPerSummary, directBufferUpload, nonBlockingPresent, fastSectionRecenter, spreadSodiumCleanup,
+                distantHorizonsSupport);
         try {
             Files.createDirectories(file.getParent());
             try (Writer w = Files.newBufferedWriter(file)) {

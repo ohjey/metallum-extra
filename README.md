@@ -68,6 +68,28 @@ OpenGL, so on Metallum it takes its OpenGL path and crashes. Its Vulkan path is 
 rendering API, so Metallum Extra answers "Metal" the same way as "Vulkan". With that, DH starts, compiles all of
 its render pipelines on Metal and runs. Experimental; needs a restart to change.
 
+### Compatibility: multiple render targets (`compat.multipleRenderTargets`)
+Metallum 0.0.23 tells the game it can draw into one color target per render pass, and it only ever attaches the
+first one. A mod that draws into several at once crashes with `Render pass created with 3 color attachments but
+device only supports 1`. Metallum Extra raises the limit to 8 (Metal's own limit) and attaches the extra targets,
+both in the render pass and in the pipelines that write them. A pass that leaves some of a pipeline's targets
+unattached gets its own pipeline variant, since Metal wants the two to match exactly.
+Passes and pipelines with a single target are untouched. Always on; can be switched off in the config file only.
+
+### Compatibility: more textures per shader (`compat.manyTextures`)
+Metallum numbers a pipeline's uniform blocks and textures in one sequence and gives each texture's sampler the same
+number. Metal has 16 sampler slots per shader stage, so a shader whose textures are numbered 16 or higher fails to
+compile (`'sampler' attribute parameter is out of bounds`). For such a shader Metallum Extra renumbers the samplers
+0, 1, 2... Shaders that already fit are left as they are. Always on; can be switched off in the config file only.
+
+### Compatibility: Shine (`compat.shine`)
+Shine 3.1 picks its code path from the graphics backend's name and knows only OpenGL and Vulkan. On "Metal" it
+settles on "unknown" and its terrain shader never gets its data. Its Vulkan path goes through the game's own
+rendering API, so Metallum Extra answers "Metal" the same way as "Vulkan". Shine also relies on the two fixes
+above: it draws terrain into three color targets, and its terrain shader reads nine textures.
+Tested with Shine 3.1.1: it loads a world and renders without errors under Metal's API validation. How it looks has
+not been compared against Shine on Vulkan. Experimental; needs a restart to change.
+
 ## Settings in game
 The same settings appear in two places, with the same names:
 - **Video Settings → Metallum Extra** (when Sodium is installed)
@@ -80,7 +102,11 @@ The same settings appear in two places, with the same names:
 | Smooth Memory Cleanup | `fix.spreadSodiumCleanup` |
 | Faster Small Uploads | `fix.directBufferUpload` |
 | Distant Horizons Support | `compat.distantHorizons` |
+| Shine Support | `compat.shine` |
 | Performance Logging | `profiler.enabled` (off by default) |
+
+Two more keys are in the config file only: `compat.multipleRenderTargets` and `compat.manyTextures`. They lift
+Metallum limits and do nothing unless a mod needs them, so they are always on and have no switch in game.
 
 ## Config
 `config/metallum-extra.properties` is created on first launch. Restart the game after you edit it.

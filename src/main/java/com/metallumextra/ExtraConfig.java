@@ -37,6 +37,12 @@ public final class ExtraConfig {
     public volatile boolean spreadSodiumCleanup;
     /** Distant Horizons: make it use its backend-neutral renderer on Metal. Read once at startup. */
     public volatile boolean distantHorizonsSupport;
+    /** Let a render pass draw into several color targets at once (Metallum 0.0.23 supports one). File only; read once at startup. */
+    public volatile boolean multipleRenderTargets;
+    /** Renumber samplers so shaders with textures in slots 16 and up compile (Metal has 16 sampler slots). File only; read once at startup. */
+    public volatile boolean manyTextures;
+    /** Shine: make it use its backend-neutral (Vulkan-mode) renderer on Metal. Read once at startup. */
+    public volatile boolean shineSupport;
 
     private Path file;
 
@@ -51,6 +57,9 @@ public final class ExtraConfig {
         this.fastSectionRecenter = bool(p, "fix.fastSectionRecenter", true);
         this.spreadSodiumCleanup = bool(p, "fix.spreadSodiumCleanup", true);
         this.distantHorizonsSupport = bool(p, "compat.distantHorizons", true);
+        this.multipleRenderTargets = bool(p, "compat.multipleRenderTargets", true);
+        this.manyTextures = bool(p, "compat.manyTextures", true);
+        this.shineSupport = bool(p, "compat.shine", true);
     }
 
     /** Live toggles (from the in-game screen): take effect immediately and are written back to the file. */
@@ -76,6 +85,12 @@ public final class ExtraConfig {
         this.distantHorizonsSupport = value;
         save(file);
         MetallumExtra.LOGGER.info("[Metallum Extra] distantHorizonsSupport={} (takes effect after a restart)", value);
+    }
+
+    public void setShineSupport(final boolean value) {
+        this.shineSupport = value;
+        save(file);
+        MetallumExtra.LOGGER.info("[Metallum Extra] shineSupport={} (takes effect after a restart)", value);
     }
 
     public void setProfilerEnabled(final boolean value) {
@@ -152,8 +167,24 @@ public final class ExtraConfig {
                 # Distant Horizons only knows OpenGL and Vulkan and crashes on Metal. This makes it use
                 # its Vulkan-style renderer, which is written against the game's own rendering API.
                 compat.distantHorizons=%s
+                # Shine only knows OpenGL and Vulkan and renders terrain without its own data on Metal.
+                # This makes it use its Vulkan-style renderer, which is written against the game's own
+                # rendering API.
+                compat.shine=%s
+
+                # --- Metallum limits lifted (file only, no in-game switch; restart needed) ---
+                # These do nothing unless a mod needs them, so they are always on. They are here only so
+                # one can be switched off if it ever causes trouble with some other mod.
+                # Metallum can only draw into one image at a time. Mods that draw into several at once
+                # (Shine does, for its bloom and rim-light masks) crash with "Render pass created with N
+                # color attachments but device only supports 1". This adds support for up to 8.
+                compat.multipleRenderTargets=%s
+                # Metal has 16 sampler slots per shader and Metallum numbers a sampler after its texture, so
+                # a shader whose textures go past number 15 fails to compile ("'sampler' attribute parameter
+                # is out of bounds"). This renumbers the samplers of such shaders. Others are untouched.
+                compat.manyTextures=%s
                 """.formatted(profilerEnabled, hitchMinMs, hitchMultiplier, summarySeconds, maxHitchLogsPerSummary, directBufferUpload, nonBlockingPresent, fastSectionRecenter, spreadSodiumCleanup,
-                distantHorizonsSupport);
+                distantHorizonsSupport, shineSupport, multipleRenderTargets, manyTextures);
         try {
             Files.createDirectories(file.getParent());
             try (Writer w = Files.newBufferedWriter(file)) {

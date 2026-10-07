@@ -64,6 +64,11 @@ public final class Settings {
                         "Lets Distant Horizons run on Metallum instead of crashing. Distant Horizons only knows "
                                 + "about OpenGL and Vulkan; this tells it to use its Vulkan-style renderer, which "
                                 + "also works on Metal. Experimental. Restart the game after changing it.",
-                        Impact.VARIES, true, () -> c.distantHorizonsSupport, c::setDistantHorizonsSupport));
+                        Impact.VARIES, true, () -> c.distantHorizonsSupport, c::setDistantHorizonsSupport),
+                new Toggle("shine", "Shine Support",
+                        "Lets Shine run on Metallum. Shine only knows about OpenGL and Vulkan; this tells it to "
+                                + "use its Vulkan-style renderer, which also works on Metal. Experimental. "
+                                + "Restart the game after changing it.",
+                        Impact.VARIES, true, () -> c.shineSupport, c::setShineSupport));
     }
 }

@@ -9,6 +9,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /** Time the CPU spends blocked waiting for the GPU to finish older frames (or fences). */
 @Mixin(targets = "com.metallum.render.MetalCommandEncoder", remap = false)
 public abstract class MetalCommandEncoderMixin {
+    /** Every buffer/texture upload or copy goes through here (Metallum gives each one its own copy pass). */
+    @Inject(method = "blitCommandEncoder", at = @At("HEAD"))
+    private void metallumExtra$uploadStarted(final CallbackInfoReturnable<?> cir) {
+        FrameProfiler.uploadStarted();
+    }
+
     @Inject(method = "awaitSubmitCompletion", at = @At("HEAD"))
     private void metallumExtra$gpuWaitBegin(final long submitIndex, final long timeoutMs, final CallbackInfoReturnable<Boolean> cir) {
         FrameProfiler.gpuWaitBegin();

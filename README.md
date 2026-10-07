@@ -86,6 +86,7 @@ won't crash. To port:
 ## Roadmap
 - **0.2:** shader warm-up and a persistent pipeline cache (compile everything from `runtime-pipelines` on the
   loading screen, and cache compiled Metal binaries across launches).
-- Batching uploads into one copy pass was built and tested (copy passes fell from ~65 to ~3 per frame while flying at
-  97 chunks) but did not change FPS or 1% lows in an on/off/on test, so it was removed.
+- Batching uploads into one copy pass was built and tested twice (97 chunks without Bobby, then 256 with Bobby and
+  GPU timings). It cut copy passes about twentyfold but did not reduce slow GPU frames or raise 1% lows in on/off/on
+  tests, so it is not included. The experiment is kept on the `batch-uploads-retest` branch.
 - Further fixes, chosen based on the profiler data.

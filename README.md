@@ -44,6 +44,12 @@ image free. Metallum Extra asks for images on a helper thread; a frame that fini
 not shown (the next one is), so the render thread never waits on the display. Does nothing with vsync on.
 The profiler summary reports `shown N/s, skipped N/s` when this is active.
 
+### Fix: fast section re-centering (`fix.fastSectionRecenter`)
+This one is in Minecraft itself, not Metallum. Each time the camera enters a new chunk section, the game rescans
+every section slot in render distance on the render thread: about 6.3 million slots at render distance 256 (for
+example with Bobby), roughly 27 ms per crossing. Metallum Extra updates only the slots that changed (about 0.2 ms).
+The result is identical to the vanilla rescan; a randomized comparison of 1,600 moves found no differences.
+
 ## Config
 `config/metallum-extra.properties` is created on first launch. Restart the game after you edit it.
 

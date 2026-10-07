@@ -28,7 +28,7 @@ public final class MetallumExtra implements ClientModInitializer {
                 Runtime.getRuntime().maxMemory() / (1024 * 1024),
                 Runtime.getRuntime().availableProcessors(),
                 System.getProperty("os.version"));
-        LOGGER.info("[Metallum Extra] profiler={} directBufferUpload={} nonBlockingPresent={}", config.profilerEnabled, config.directBufferUpload, config.nonBlockingPresent);
+        LOGGER.info("[Metallum Extra] profiler={} directBufferUpload={} nonBlockingPresent={} fastSectionRecenter={}", config.profilerEnabled, config.directBufferUpload, config.nonBlockingPresent, config.fastSectionRecenter);
         FrameProfiler.touch();
     }
 

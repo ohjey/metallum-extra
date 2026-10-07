@@ -11,7 +11,8 @@
     "MetalSurfaceMixin",
     "MTLBuiltinPipelinesMixin",
     "MTLCommandBufferMixin",
-    "MTLDeviceMixin"
+    "MTLDeviceMixin",
+    "RotatingSectionStorageMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -31,6 +31,8 @@ public final class ExtraConfig {
     public volatile boolean directBufferUpload;
     /** With vsync off, skip presenting a frame instead of blocking when macOS has no swapchain image free. */
     public volatile boolean nonBlockingPresent;
+    /** When the camera enters a new chunk section, update only the section slots that changed (vanilla rescans all). */
+    public volatile boolean fastSectionRecenter;
 
     private Path file;
 
@@ -42,6 +44,7 @@ public final class ExtraConfig {
         this.maxHitchLogsPerSummary = Math.max(0, (int) dbl(p, "profiler.maxHitchLogsPerSummary", 10));
         this.directBufferUpload = bool(p, "fix.directBufferUpload", true);
         this.nonBlockingPresent = bool(p, "fix.nonBlockingPresent", true);
+        this.fastSectionRecenter = bool(p, "fix.fastSectionRecenter", true);
     }
 
     /** Live toggles (from the in-game screen): take effect immediately and are written back to the file. */
@@ -49,6 +52,12 @@ public final class ExtraConfig {
         this.directBufferUpload = value;
         save(file);
         MetallumExtra.LOGGER.info("[Metallum Extra] directBufferUpload={}", value);
+    }
+
+    public void setFastSectionRecenter(final boolean value) {
+        this.fastSectionRecenter = value;
+        save(file);
+        MetallumExtra.LOGGER.info("[Metallum Extra] fastSectionRecenter={}", value);
     }
 
     public void setNonBlockingPresent(final boolean value) {
@@ -104,7 +113,11 @@ public final class ExtraConfig {
                 # finish while macOS has no swapchain image free are not shown (the next one is).
                 # Has no effect with vsync on.
                 fix.nonBlockingPresent=%s
-                """.formatted(profilerEnabled, hitchMinMs, hitchMultiplier, summarySeconds, maxHitchLogsPerSummary, directBufferUpload, nonBlockingPresent);
+                # Minecraft rescans every section slot in render distance each time you cross into a new
+                # chunk section (millions of slots at very high render distances, e.g. with Bobby).
+                # This updates only the slots that actually changed.
+                fix.fastSectionRecenter=%s
+                """.formatted(profilerEnabled, hitchMinMs, hitchMultiplier, summarySeconds, maxHitchLogsPerSummary, directBufferUpload, nonBlockingPresent, fastSectionRecenter);
         try {
             Files.createDirectories(file.getParent());
             try (Writer w = Files.newBufferedWriter(file)) {

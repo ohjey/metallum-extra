@@ -34,6 +34,10 @@ public final class ExtraConfigScreen extends Screen {
                 "With vsync off, never stall a frame waiting for the display. Frames that finish while macOS has no "
                         + "swapchain image free are not shown (the next one is). No effect with vsync on.",
                 config.nonBlockingPresent, config::setNonBlockingPresent));
+        rows.addChild(toggle("Fast section re-centering",
+                "Minecraft rescans every section slot in render distance each time you cross into a new chunk "
+                        + "section. This updates only the ones that changed. Matters at very high render distances.",
+                config.fastSectionRecenter, config::setFastSectionRecenter));
         rows.addChild(toggle("Direct buffer upload",
                 "Fill CPU-visible buffers directly when they are created instead of breaking the frame for a GPU copy.",
                 config.directBufferUpload, config::setDirectBufferUpload));

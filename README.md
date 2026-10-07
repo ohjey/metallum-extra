@@ -7,7 +7,10 @@ The goal is to make uncapped FPS steady, not just high, on Apple Silicon.
 
 ## What's in 0.1.0
 
-### Frame-hitch profiler
+### Frame-hitch profiler (off by default)
+This is a troubleshooting tool, not something to leave running. Turn it on with **Performance Logging** in the
+settings (or `profiler.enabled=true`) and restart; it then writes new files every session.
+
 Each time a frame takes noticeably longer than normal (by default, longer than 15 ms *and*
 4× the recent average), the profiler records where the time went:
 
@@ -77,6 +80,7 @@ The same settings appear in two places, with the same names:
 | Smooth Memory Cleanup | `fix.spreadSodiumCleanup` |
 | Faster Small Uploads | `fix.directBufferUpload` |
 | Distant Horizons Support | `compat.distantHorizons` |
+| Performance Logging | `profiler.enabled` (off by default) |
 
 ## Config
 `config/metallum-extra.properties` is created on first launch. Restart the game after you edit it.

@@ -19,7 +19,8 @@ public final class SodiumOptionsIntegration implements ConfigEntryPoint {
                 .addPage(builder.createOptionPage()
                         .setName(Component.literal("Metallum Extra"))
                         .addOptionGroup(group(builder, "Smoothness", Settings.smoothness()))
-                        .addOptionGroup(group(builder, "Mod Compatibility", Settings.compatibility())));
+                        .addOptionGroup(group(builder, "Mod Compatibility", Settings.compatibility()))
+                        .addOptionGroup(group(builder, "Troubleshooting", Settings.troubleshooting())));
     }
 
     private static OptionGroupBuilder group(final ConfigBuilder builder, final String name, final List<Settings.Toggle> toggles) {
@@ -29,7 +30,7 @@ public final class SodiumOptionsIntegration implements ConfigEntryPoint {
                     .setName(Component.literal(toggle.name()))
                     .setTooltip(Component.literal(toggle.tooltip()))
                     .setImpact(OptionImpact.valueOf(toggle.impact().name()))
-                    .setDefaultValue(true)
+                    .setDefaultValue(toggle.defaultValue())
                     // The setters apply the change and write the config file themselves.
                     .setBinding(toggle.setter(), toggle.getter()::getAsBoolean)
                     .setStorageHandler(() -> {

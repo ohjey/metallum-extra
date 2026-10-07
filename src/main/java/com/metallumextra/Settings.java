@@ -10,6 +10,10 @@ public final class Settings {
 
     public record Toggle(String id, String name, String tooltip, Impact impact, boolean needsRestart,
                          BooleanSupplier getter, Consumer<Boolean> setter) {
+        /** Everything is on by default except performance logging. */
+        public boolean defaultValue() {
+            return !id.equals("profiler");
+        }
     }
 
     private Settings() {
@@ -38,6 +42,18 @@ public final class Settings {
                         "Sends small pieces of render data straight to memory instead of through an extra GPU "
                                 + "step. A small improvement; safe to leave on.",
                         Impact.LOW, false, () -> c.directBufferUpload, c::setDirectBufferUpload));
+    }
+
+    /** Diagnostics. Read once at startup. */
+    public static List<Toggle> troubleshooting() {
+        ExtraConfig c = ExtraConfig.get();
+        return List.of(
+                new Toggle("profiler", "Performance Logging",
+                        "For troubleshooting only. Leave this off unless you have been asked to turn it on. "
+                                + "It records what causes each stutter and writes new files to the metallum-extra "
+                                + "folder in your game directory every time you play. It does not make the game "
+                                + "faster. Restart the game after changing it.",
+                        Impact.LOW, true, () -> c.profilerEnabled, c::setProfilerEnabled));
     }
 
     /** Getting other mods to run on Metallum. These are read once at startup. */

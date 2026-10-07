@@ -19,11 +19,11 @@ public abstract class MetalRenderPassMixin {
 
     @Inject(method = "drawIndexedIndirect", at = @At("HEAD"))
     private void metallumExtra$batchBegin(final GpuBufferSlice commands, final int drawCount, final CallbackInfo ci) {
-        this.metallumExtra$batchStart = System.nanoTime();
+        if (FrameProfiler.enabled()) this.metallumExtra$batchStart = System.nanoTime();
     }
 
     @Inject(method = "drawIndexedIndirect", at = @At("RETURN"))
     private void metallumExtra$batchEnd(final GpuBufferSlice commands, final int drawCount, final CallbackInfo ci) {
-        FrameProfiler.drawBatchSubmitted(drawCount, System.nanoTime() - this.metallumExtra$batchStart);
+        if (FrameProfiler.enabled()) FrameProfiler.drawBatchSubmitted(drawCount, System.nanoTime() - this.metallumExtra$batchStart);
     }
 }

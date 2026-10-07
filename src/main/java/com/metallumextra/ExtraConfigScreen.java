@@ -36,6 +36,9 @@ public final class ExtraConfigScreen extends Screen {
         for (Settings.Toggle toggle : Settings.compatibility()) {
             rows.addChild(button(toggle));
         }
+        for (Settings.Toggle toggle : Settings.troubleshooting()) {
+            rows.addChild(button(toggle));
+        }
         rows.addChild(new MultiLineTextWidget(Component.literal(
                 "Hover a setting to see what it does. Changes apply right away unless marked (restart)."), font)
                 .setMaxWidth(ROW_WIDTH).setCentered(true));

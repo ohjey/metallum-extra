@@ -132,6 +132,11 @@ public final class FrameProfiler {
     static void touch() {
     }
 
+    /** Whether performance logging was switched on when the game started. */
+    public static boolean enabled() {
+        return ENABLED;
+    }
+
     private static boolean onRenderThread() {
         // Before the first frame we don't know the render thread yet; startup work is single-threaded enough.
         return ENABLED && (renderThread == null || Thread.currentThread() == renderThread);

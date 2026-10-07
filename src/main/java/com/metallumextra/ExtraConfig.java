@@ -18,7 +18,7 @@ public final class ExtraConfig {
     private static ExtraConfig instance;
 
     /** Master switch for the frame-hitch profiler. */
-    public final boolean profilerEnabled;
+    public volatile boolean profilerEnabled;
     /** A frame only counts as a hitch if it is at least this long... */
     public final double hitchMinMs;
     /** ...and at least this many times longer than the recent average frame. */
@@ -41,7 +41,7 @@ public final class ExtraConfig {
     private Path file;
 
     private ExtraConfig(final Properties p) {
-        this.profilerEnabled = bool(p, "profiler.enabled", true);
+        this.profilerEnabled = bool(p, "profiler.enabled", false);
         this.hitchMinMs = dbl(p, "profiler.hitchMinMs", 15.0);
         this.hitchMultiplier = dbl(p, "profiler.hitchMultiplier", 4.0);
         this.summarySeconds = Math.max(1, (int) dbl(p, "profiler.summarySeconds", 10));
@@ -76,6 +76,12 @@ public final class ExtraConfig {
         this.distantHorizonsSupport = value;
         save(file);
         MetallumExtra.LOGGER.info("[Metallum Extra] distantHorizonsSupport={} (takes effect after a restart)", value);
+    }
+
+    public void setProfilerEnabled(final boolean value) {
+        this.profilerEnabled = value;
+        save(file);
+        MetallumExtra.LOGGER.info("[Metallum Extra] profilerEnabled={} (takes effect after a restart)", value);
     }
 
     public void setNonBlockingPresent(final boolean value) {
@@ -113,9 +119,10 @@ public final class ExtraConfig {
                 # The same options are in game: Video Settings > Metallum Extra (with Sodium), or Mods > Metallum Extra
                 # (with Mod Menu). The fix.* ones switch live.
 
-                # --- Frame-hitch profiler ---
-                # Logs a breakdown of every stutter frame to the game log and to
-                # <minecraft folder>/metallum-extra/ as CSV files.
+                # --- Performance logging (off by default; restart needed) ---
+                # For troubleshooting only. Records where every stutter's time went, to the game log
+                # and to files in <minecraft folder>/metallum-extra/. Leave off unless you are asked
+                # to turn it on: it writes new files every session.
                 profiler.enabled=%s
                 # A frame is a "hitch" when it is longer than BOTH of these:
                 profiler.hitchMinMs=%s

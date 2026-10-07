@@ -34,6 +34,7 @@ public abstract class MTLCommandBufferMixin {
 
     @Inject(method = "commitWithCompletionBlock", at = @At("HEAD"))
     private void metallumExtra$committed(final MemorySegment block, final CallbackInfo ci) {
+        if (!FrameProfiler.enabled()) return;
         this.metallumExtra$commitNs = System.nanoTime();
         this.metallumExtra$frameStats = FrameProfiler.frameStatsForGpu();
     }

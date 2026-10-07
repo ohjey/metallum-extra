@@ -52,6 +52,13 @@ every section slot in render distance on the render thread: about 6.3 million sl
 example with Bobby), roughly 27 ms per crossing. Metallum Extra updates only the slots that changed (about 0.2 ms).
 The result is identical to the vanilla rescan; a randomized comparison of 1,600 moves found no differences.
 
+### Fix: spread Sodium buffer cleanup (`fix.spreadSodiumCleanup`)
+This one is in Sodium. Every frame Sodium empties a queue of chunk-mesh buffers the garbage collector has finished
+with. The queue only fills when a collection cycle ends, so afterwards it can hold a few hundred thousand entries
+and emptying it in one go stalls the render thread for 50-130 ms (seen every 25-30 s with Bobby at 256 chunks).
+Metallum Extra gives that work a small time budget per frame and leaves the rest for the next frames.
+The profiler summary reports `cleanup deferred N frames`.
+
 ## Config
 `config/metallum-extra.properties` is created on first launch. Restart the game after you edit it.
 

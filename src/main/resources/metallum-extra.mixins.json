@@ -12,7 +12,8 @@
     "MTLBuiltinPipelinesMixin",
     "MTLCommandBufferMixin",
     "MTLDeviceMixin",
-    "RotatingSectionStorageMixin"
+    "RotatingSectionStorageMixin",
+    "SodiumNativeBufferMixin"
   ],
   "injectors": {
     "defaultRequire": 1

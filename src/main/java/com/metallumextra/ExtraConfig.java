@@ -33,6 +33,8 @@ public final class ExtraConfig {
     public volatile boolean nonBlockingPresent;
     /** When the camera enters a new chunk section, update only the section slots that changed (vanilla rescans all). */
     public volatile boolean fastSectionRecenter;
+    /** Sodium: empty its freed-buffer queue a little each frame instead of all at once after a GC cycle. */
+    public volatile boolean spreadSodiumCleanup;
 
     private Path file;
 
@@ -45,6 +47,7 @@ public final class ExtraConfig {
         this.directBufferUpload = bool(p, "fix.directBufferUpload", true);
         this.nonBlockingPresent = bool(p, "fix.nonBlockingPresent", true);
         this.fastSectionRecenter = bool(p, "fix.fastSectionRecenter", true);
+        this.spreadSodiumCleanup = bool(p, "fix.spreadSodiumCleanup", true);
     }
 
     /** Live toggles (from the in-game screen): take effect immediately and are written back to the file. */
@@ -58,6 +61,12 @@ public final class ExtraConfig {
         this.fastSectionRecenter = value;
         save(file);
         MetallumExtra.LOGGER.info("[Metallum Extra] fastSectionRecenter={}", value);
+    }
+
+    public void setSpreadSodiumCleanup(final boolean value) {
+        this.spreadSodiumCleanup = value;
+        save(file);
+        MetallumExtra.LOGGER.info("[Metallum Extra] spreadSodiumCleanup={}", value);
     }
 
     public void setNonBlockingPresent(final boolean value) {
@@ -117,7 +126,11 @@ public final class ExtraConfig {
                 # chunk section (millions of slots at very high render distances, e.g. with Bobby).
                 # This updates only the slots that actually changed.
                 fix.fastSectionRecenter=%s
-                """.formatted(profilerEnabled, hitchMinMs, hitchMultiplier, summarySeconds, maxHitchLogsPerSummary, directBufferUpload, nonBlockingPresent, fastSectionRecenter);
+                # Sodium empties a queue of finished chunk-mesh buffers in one go after each garbage
+                # collection, which can take 50-130 ms while chunks stream in. This spreads that work
+                # over the following frames. No effect without Sodium.
+                fix.spreadSodiumCleanup=%s
+                """.formatted(profilerEnabled, hitchMinMs, hitchMultiplier, summarySeconds, maxHitchLogsPerSummary, directBufferUpload, nonBlockingPresent, fastSectionRecenter, spreadSodiumCleanup);
         try {
             Files.createDirectories(file.getParent());
             try (Writer w = Files.newBufferedWriter(file)) {

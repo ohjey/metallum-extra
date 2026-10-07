@@ -75,6 +75,7 @@ public final class FrameProfiler {
     private static long windowRenderPasses;
     private static long windowBlitPasses;
     private static long windowUploads;
+    private static int windowCleanupDeferred;
     private static int windowPresented;
     private static boolean shownThisFrame;
 
@@ -204,6 +205,11 @@ public final class FrameProfiler {
     /** One buffer/texture upload or copy (several can share a copy pass when uploads are batched). */
     public static void uploadStarted() {
         if (onRenderThread()) uploads++;
+    }
+
+    /** Spread Sodium cleanup: a frame hit its time budget and left the rest of the queue for later. */
+    public static void cleanupDeferred() {
+        if (onRenderThread()) windowCleanupDeferred++;
     }
 
     public static void blitPassStarted() {
@@ -416,7 +422,7 @@ public final class FrameProfiler {
             MetallumExtra.LOGGER.info(String.format(Locale.ROOT,
                     "[Metallum Extra] last %.0fs: avg %.0f fps | median %.2fms | 1%% low %.0f fps | 0.1%% low %.0f fps | worst %.1fms | hitches %d%s | compiles %d (%.0fms) | GC pauses %d (%dms)"
                             + " | per frame: GPU wait %.2fms, drawable wait %.2fms, passes %.1f render / %.1f copy | shown %.0f/s, skipped %.0f/s"
-                            + " | GPU exec avg %.2fms max %.1fms, queue max %.1fms | uploads %.1f/frame | GPU mem %d MB, Java heap %d MB",
+                            + " | GPU exec avg %.2fms max %.1fms, queue max %.1fms | uploads %.1f/frame | GPU mem %d MB, Java heap %d MB | cleanup deferred %d frames",
                     seconds, avgFps, median, low1, low01, worst, windowHitches,
                     causes.isEmpty() ? "" : " (" + causes + ")",
                     windowCompiles, windowCompileNs / 1e6, windowGcPauses, windowGcMs,
@@ -424,16 +430,16 @@ public final class FrameProfiler {
                     (double) windowRenderPasses / n, (double) windowBlitPasses / n,
                     windowPresented / seconds, windowSkipped / seconds,
                     windowGpuFrames == 0 ? 0.0 : windowGpuExecMs / windowGpuFrames, windowGpuExecMaxMs, windowGpuQueueMaxMs,
-                    (double) windowUploads / n, gpuMemMb, heapMb));
+                    (double) windowUploads / n, gpuMemMb, heapMb, windowCleanupDeferred));
             writeLine(summaryCsv, String.format(Locale.ROOT,
-                    "%.1f,%d,%.1f,%.3f,%.1f,%.1f,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.3f,%.3f,%.1f,%.1f,%d,%d,%.3f,%.2f,%.2f,%.1f,%d,%d",
+                    "%.1f,%d,%.1f,%.3f,%.1f,%.1f,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.3f,%.3f,%.1f,%.1f,%d,%d,%.3f,%.2f,%.2f,%.1f,%d,%d,%d",
                     (now - sessionStart) / 1e9, n, avgFps, median, low1, low01, worst, windowHitches,
                     windowCauseCounts[0], windowCauseCounts[1], windowCauseCounts[2], windowCauseCounts[3],
                     windowCauseCounts[4], windowCauseCounts[5], windowCompiles, windowGcMs,
                     windowGpuWaitNs / 1e6 / n, windowDrawableNs / 1e6 / n,
                     (double) windowRenderPasses / n, (double) windowBlitPasses / n, windowPresented, windowSkipped,
                     windowGpuFrames == 0 ? 0.0 : windowGpuExecMs / windowGpuFrames, windowGpuExecMaxMs, windowGpuQueueMaxMs,
-                    (double) windowUploads / n, gpuMemMb, heapMb));
+                    (double) windowUploads / n, gpuMemMb, heapMb, windowCleanupDeferred));
             String[] where = HitchSampler.drainBackground(10);
             writeLine(profileTxt, String.format(Locale.ROOT, "t=%.0fs avg %.0f fps median %.2fms", (now - sessionStart) / 1e9, avgFps, median));
             writeLine(profileTxt, "  phases: " + where[0]);
@@ -454,6 +460,7 @@ public final class FrameProfiler {
         windowRenderPasses = 0L;
         windowBlitPasses = 0L;
         windowUploads = 0L;
+        windowCleanupDeferred = 0;
         windowPresented = 0;
         windowGpuFrames = 0;
         windowGpuExecMs = 0.0;
@@ -505,7 +512,7 @@ public final class FrameProfiler {
             summaryCsv = Files.newBufferedWriter(dir.resolve("summary-" + stamp + ".csv"));
             writeLine(summaryCsv, "time_s,frames,avg_fps,median_ms,low1_fps,low01_fps,worst_ms,hitches,"
                     + "hitch_compile,hitch_gpu_wait,hitch_drawable,hitch_gc,hitch_alloc,hitch_cpu_other,compiles,gc_ms,"
-                    + "avg_gpu_wait_ms,avg_drawable_wait_ms,avg_render_passes,avg_copy_passes,frames_shown,frames_skipped,avg_gpu_exec_ms,max_gpu_exec_ms,max_gpu_queue_ms,avg_uploads,gpu_mem_mb,java_heap_mb");
+                    + "avg_gpu_wait_ms,avg_drawable_wait_ms,avg_render_passes,avg_copy_passes,frames_shown,frames_skipped,avg_gpu_exec_ms,max_gpu_exec_ms,max_gpu_queue_ms,avg_uploads,gpu_mem_mb,java_heap_mb,cleanup_deferred_frames");
             pipelinesTxt = Files.newBufferedWriter(dir.resolve("runtime-pipelines-" + stamp + ".txt"));
             stacksTxt = Files.newBufferedWriter(dir.resolve("hitch-stacks-" + stamp + ".txt"));
             profileTxt = Files.newBufferedWriter(dir.resolve("profile-" + stamp + ".txt"));

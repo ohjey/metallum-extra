@@ -33,6 +33,11 @@ dependencies {
 
 	// Optional: only for the in-game settings screen entry in Mod Menu. Not needed at runtime.
 	compileOnly "maven.modrinth:modmenu:${project.modmenu_version}"
+
+	// Dev client only: run with Sodium (and the Fabric API it needs), since one fix targets Sodium and that is how
+	// Metallum is normally used. Not bundled and not required.
+	runtimeOnly "maven.modrinth:sodium:${project.sodium_version}"
+	runtimeOnly "maven.modrinth:fabric-api:${project.fabric_api_version}"
 }
 
 processResources {

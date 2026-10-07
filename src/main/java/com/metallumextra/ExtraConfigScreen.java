@@ -38,6 +38,10 @@ public final class ExtraConfigScreen extends Screen {
                 "Minecraft rescans every section slot in render distance each time you cross into a new chunk "
                         + "section. This updates only the ones that changed. Matters at very high render distances.",
                 config.fastSectionRecenter, config::setFastSectionRecenter));
+        rows.addChild(toggle("Spread Sodium buffer cleanup",
+                "Sodium empties a queue of finished chunk-mesh buffers in one go after each garbage collection, "
+                        + "which can stall a frame while chunks stream in. This spreads it over the following frames.",
+                config.spreadSodiumCleanup, config::setSpreadSodiumCleanup));
         rows.addChild(toggle("Direct buffer upload",
                 "Fill CPU-visible buffers directly when they are created instead of breaking the frame for a GPU copy.",
                 config.directBufferUpload, config::setDirectBufferUpload));

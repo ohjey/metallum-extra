@@ -32,7 +32,7 @@ import java.util.Optional;
 
 /**
  * Time the CPU spends blocked waiting for the GPU to finish older frames (or fences), plus multiple render
- * targets: Metallum 0.0.23 starts every render pass with color target 0 only.
+ * targets: Metallum starts every render pass with color target 0 only.
  */
 @Mixin(targets = "com.metallum.render.MetalCommandEncoder", remap = false)
 public abstract class MetalCommandEncoderMixin implements MultiTarget.Encoder {
@@ -54,11 +54,6 @@ public abstract class MetalCommandEncoderMixin implements MultiTarget.Encoder {
     @Shadow
     abstract MTLCommandBuffer commandBuffer();
 
-    @Shadow
-    private static boolean isFullTextureView(final GpuTextureView view) {
-        throw new AssertionError();
-    }
-
     /** Every buffer/texture upload or copy goes through here (Metallum gives each one its own copy pass). */
     @Inject(method = "blitCommandEncoder", at = @At("HEAD"))
     private void metallumExtra$uploadStarted(final CallbackInfoReturnable<?> cir) {
@@ -77,7 +72,8 @@ public abstract class MetalCommandEncoderMixin implements MultiTarget.Encoder {
 
     /**
      * Metallum has built the pass from color target 0 and the depth target. Hand it the rest, treating each one's
-     * deferred clear the same way Metallum treats target 0's.
+     * deferred clear the way Metallum 0.0.23 treats target 0's. (0.0.24 limits a pass's clears to its render
+     * area; a pass with extra targets still clears whole textures, on either release.)
      */
     @Inject(method = "createRenderPass", at = @At("RETURN"))
     private void metallumExtra$attachExtraTargets(final RenderPassDescriptor descriptor, final CallbackInfoReturnable<RenderPassBackend> cir) {
@@ -96,7 +92,7 @@ public abstract class MetalCommandEncoderMixin implements MultiTarget.Encoder {
             Vector4fc clear = attachment.clearValue().orElse(null);
             Vector4fc pending = this.pendingColorClears.get(texture);
             if (pending != null && clear == null) {
-                if (isFullTextureView(view)) {
+                if (metallumExtra$isFullTextureView(view)) {
                     this.pendingColorClears.remove(texture);
                     clear = pending;
                 } else {
@@ -161,6 +157,17 @@ public abstract class MetalCommandEncoderMixin implements MultiTarget.Encoder {
         this.renderDepthAttachment = depthHandle;
         this.metallumExtra$encoderExtraTargets = handles;
         return encoder;
+    }
+
+    /**
+     * Whether a view covers its whole texture, so that a deferred clear of the texture can be done as the pass
+     * starts. Metallum 0.0.23 has this as a private method of its own; 0.0.24 dropped it.
+     */
+    @Unique
+    private static boolean metallumExtra$isFullTextureView(final GpuTextureView view) {
+        return view.baseMipLevel() == 0
+                && view.mipLevels() >= view.texture().getMipLevels()
+                && view.texture().getDepthOrLayers() == 1;
     }
 
     @Unique

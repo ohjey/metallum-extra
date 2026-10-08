@@ -17,9 +17,9 @@
     "fabricloader": ">=0.19.2",
     "minecraft": "~26.2-",
     "java": ">=25",
-    "metallum": "${metallum_version}"
+    "metallum": ">=${metallum_version} <=${metallum_max_version}"
   },
   "custom": {
-    "metallum-extra:note": "Hooks Metallum internals; built for exactly one Metallum version."
+    "metallum-extra:note": "Hooks Metallum internals; only accepts the Metallum versions it was checked against."
   }
 }

@@ -2,7 +2,7 @@ plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
-version = "${project.mod_version}+metallum.${project.metallum_version}"
+version = "${project.mod_version}+metallum.${project.metallum_version}-${project.metallum_max_version}"
 group = project.maven_group
 
 base {
@@ -29,7 +29,9 @@ dependencies {
 
 	// Metallum itself (from Modrinth). Needed at compile time because we hook its internals,
 	// and at runtime so `./gradlew runClient` launches with Metal.
-	implementation "maven.modrinth:metallum-mc:${project.metallum_version}"
+	// The dev client runs the oldest supported release unless told otherwise: -Pmetallum_run_version=0.0.24
+	compileOnly "maven.modrinth:metallum-mc:${project.metallum_version}"
+	runtimeOnly "maven.modrinth:metallum-mc:${project.findProperty('metallum_run_version') ?: project.metallum_version}"
 
 	// Optional: only for the in-game settings screen entry in Mod Menu. Not needed at runtime.
 	compileOnly "maven.modrinth:modmenu:${project.modmenu_version}"
@@ -45,9 +47,11 @@ dependencies {
 processResources {
 	inputs.property 'version', project.version
 	inputs.property 'metallum_version', project.metallum_version
+	inputs.property 'metallum_max_version', project.metallum_max_version
 
 	filesMatching('fabric.mod.json') {
-		expand 'version': inputs.properties.version, 'metallum_version': inputs.properties.metallum_version
+		expand 'version': inputs.properties.version, 'metallum_version': inputs.properties.metallum_version,
+				'metallum_max_version': inputs.properties.metallum_max_version
 	}
 }
 

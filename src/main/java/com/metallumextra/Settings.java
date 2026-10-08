@@ -8,8 +8,14 @@ import java.util.function.Consumer;
 public final class Settings {
     public enum Impact { LOW, MEDIUM, HIGH, VARIES }
 
+    /** {@code available} is false when the setting cannot do anything in this installation; the tooltip then says why. */
     public record Toggle(String id, String name, String tooltip, Impact impact, boolean needsRestart,
-                         BooleanSupplier getter, Consumer<Boolean> setter) {
+                         BooleanSupplier getter, Consumer<Boolean> setter, boolean available) {
+        public Toggle(final String id, final String name, final String tooltip, final Impact impact, final boolean needsRestart,
+                      final BooleanSupplier getter, final Consumer<Boolean> setter) {
+            this(id, name, tooltip, impact, needsRestart, getter, setter, true);
+        }
+
         /** Everything is on by default except performance logging. */
         public boolean defaultValue() {
             return !id.equals("profiler");
@@ -22,6 +28,7 @@ public final class Settings {
     /** Stutter and frame-rate fixes. All of these switch on and off immediately. */
     public static List<Toggle> smoothness() {
         ExtraConfig c = ExtraConfig.get();
+        boolean builtIn = MetallumVersion.WRITES_BUFFERS_DIRECTLY;
         return List.of(
                 new Toggle("non_blocking_present", "Unlocked Frame Rate",
                         "With VSync off, stops the game from pausing to wait for your screen. Gives higher FPS and "
@@ -39,9 +46,10 @@ public final class Settings {
                                 + "many frames so you do not feel it.",
                         Impact.MEDIUM, false, () -> c.spreadSodiumCleanup, c::setSpreadSodiumCleanup),
                 new Toggle("direct_buffer_upload", "Faster Small Uploads",
-                        "Sends small pieces of render data straight to memory instead of through an extra GPU "
+                        (builtIn ? "NOT NEEDED: this version of Metallum does this by itself. " : "")
+                                + "Sends small pieces of render data straight to memory instead of through an extra GPU "
                                 + "step. A small improvement; safe to leave on.",
-                        Impact.LOW, false, () -> c.directBufferUpload, c::setDirectBufferUpload));
+                        Impact.LOW, false, () -> c.directBufferUpload, c::setDirectBufferUpload, !builtIn));
     }
 
     /** Diagnostics. Read once at startup. */

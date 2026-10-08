@@ -31,6 +31,7 @@ public final class SodiumOptionsIntegration implements ConfigEntryPoint {
                     .setTooltip(Component.literal(toggle.tooltip()))
                     .setImpact(OptionImpact.valueOf(toggle.impact().name()))
                     .setDefaultValue(toggle.defaultValue())
+                    .setEnabled(toggle.available())
                     // The setters apply the change and write the config file themselves.
                     .setBinding(toggle.setter(), toggle.getter()::getAsBoolean)
                     .setStorageHandler(() -> {

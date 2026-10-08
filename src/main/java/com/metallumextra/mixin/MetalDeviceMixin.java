@@ -4,6 +4,7 @@ import com.metallum.mtl.MetallumExtraTargets;
 import com.metallum.render.MetallumExtraBridge;
 import com.metallumextra.ExtraConfig;
 import com.metallumextra.FrameProfiler;
+import com.metallumextra.MetallumVersion;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.shaders.ShaderSource;
@@ -19,9 +20,9 @@ import java.util.function.Supplier;
 /**
  * Pipeline naming for the profiler, plus a fix: in Metallum 0.0.23, creating a buffer with initial data always records a GPU copy,
  * which ends the current render pass. For CPU-visible buffers we can just write the memory.
- * (Metallum's newer source does the same.)
+ * Metallum 0.0.24 does the same itself, so there the fix stands aside.
  * <p>
- * Also the device limit for multiple render targets: Metallum 0.0.23 tells the game it supports one color target
+ * Also the device limit for multiple render targets: Metallum tells the game it supports one color target
  * per render pass, and the game refuses any pass that asks for more.
  */
 @Mixin(targets = "com.metallum.render.MetalDevice", remap = false)
@@ -43,6 +44,10 @@ public abstract class MetalDeviceMixin {
             cancellable = true
     )
     private void metallumExtra$createBufferDirect(final Supplier<String> label, final int usage, final ByteBuffer data, final CallbackInfoReturnable<GpuBuffer> cir) {
+        if (MetallumVersion.WRITES_BUFFERS_DIRECTLY) {
+            FrameProfiler.bufferCreatedWithData(MetallumExtraBridge.metallumWritesDirectly(usage));
+            return;
+        }
         if (ExtraConfig.get().directBufferUpload) {
             GpuBuffer buffer = MetallumExtraBridge.tryCreateBufferDirect(this, label, usage, data);
             if (buffer != null) {

@@ -50,9 +50,11 @@ public final class ExtraConfigScreen extends Screen {
 
     private static CycleButton<Boolean> button(final Settings.Toggle toggle) {
         String name = toggle.needsRestart() ? toggle.name() + " (restart)" : toggle.name();
-        return CycleButton.onOffBuilder(toggle.getter().getAsBoolean())
+        CycleButton<Boolean> button = CycleButton.onOffBuilder(toggle.getter().getAsBoolean())
                 .withTooltip(v -> Tooltip.create(Component.literal(toggle.tooltip())))
-                .create(0, 0, ROW_WIDTH, 20, Component.literal(name), (button, v) -> toggle.setter().accept(v));
+                .create(0, 0, ROW_WIDTH, 20, Component.literal(name), (widget, v) -> toggle.setter().accept(v));
+        button.active = toggle.available();
+        return button;
     }
 
     @Override

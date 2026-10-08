@@ -3,7 +3,7 @@
 An add-on for [Metallum](https://modrinth.com/mod/metallum-mc) (the Metal backend for Minecraft on macOS).
 The goal is to make uncapped FPS steady, not just high, on Apple Silicon.
 
-**Built for:** Minecraft 26.2 · Fabric · Metallum **0.0.23** (exact version; see *Updating* below)
+**Built for:** Minecraft 26.2 · Fabric · Metallum **0.0.23** or **0.0.24** (only these; see *Updating* below)
 
 ## What's in 0.1.0
 
@@ -41,10 +41,10 @@ Output:
 ### Fix: direct buffer upload
 In Metallum 0.0.23, creating a buffer with initial data always records a GPU copy, and that copy ends the current
 render pass. For buffers in CPU-visible memory, Metallum Extra writes the data directly instead.
-Metallum's newer (unreleased) source makes the same change.
+Metallum 0.0.24 makes the same change itself, so on 0.0.24 this fix stands aside and its setting is greyed out.
 
 ### Fix: non-blocking present (`fix.nonBlockingPresent`)
-With vsync off, Metallum 0.0.23 still stalls the render thread in `nextDrawable` whenever macOS has no swapchain
+With vsync off, Metallum still stalls the render thread in `nextDrawable` whenever macOS has no swapchain
 image free. Metallum Extra asks for images on a helper thread; a frame that finishes while none is free is simply
 not shown (the next one is), so the render thread never waits on the display. Does nothing with vsync on.
 The profiler summary reports `shown N/s, skipped N/s` when this is active.
@@ -69,7 +69,7 @@ rendering API, so Metallum Extra answers "Metal" the same way as "Vulkan". With 
 its render pipelines on Metal and runs. Experimental; needs a restart to change.
 
 ### Compatibility: multiple render targets (`compat.multipleRenderTargets`)
-Metallum 0.0.23 tells the game it can draw into one color target per render pass, and it only ever attaches the
+Metallum tells the game it can draw into one color target per render pass, and it only ever attaches the
 first one. A mod that draws into several at once crashes with `Render pass created with 3 color attachments but
 device only supports 1`. Metallum Extra raises the limit to 8 (Metal's own limit) and attaches the extra targets,
 both in the render pass and in the pipelines that write them. A pass that leaves some of a pipeline's targets
@@ -125,19 +125,24 @@ cd ~/Projects/metallum-extra
 ./gradlew build
 ```
 
-The mod jar is written to `build/libs/metallum-extra-0.1.0+metallum.0.0.23.jar`. Ignore the `-sources` jar.
-Put the mod jar in your instance's `mods` folder, next to Metallum 0.0.23.
+The mod jar is written to `build/libs/metallum-extra-0.1.0+metallum.0.0.23-0.0.24.jar`. Ignore the `-sources` jar.
+Put the mod jar in your instance's `mods` folder, next to Metallum 0.0.23 or 0.0.24.
 
 To launch a dev client with Metallum loaded instead: `./gradlew runClient`
+(Metallum 0.0.23; add `-Pmetallum_run_version=0.0.24` for the newer one).
 
 ## Updating to a new Metallum release
-Metallum Extra hooks Metallum's internal classes, so each build targets **one** Metallum version.
-`fabric.mod.json` enforces this: Fabric refuses to launch with a mismatched pair and shows a clear message, so the game
-won't crash. To port:
-1. Set `metallum_version` in `gradle.properties` to the new Modrinth version.
-2. Run `./gradlew build`, then launch. Any hook whose target changed fails at startup with a mixin error naming
-   the method.
-3. Update that hook, and check `com/metallum/render/MetallumExtraBridge.java` against the new source.
+Metallum Extra hooks Metallum's internal classes, so each build only accepts the Metallum versions it has been
+checked against (`metallum_version` up to `metallum_max_version` in `gradle.properties`).
+`fabric.mod.json` enforces this: Fabric refuses to launch with any other Metallum and shows a clear message, so the
+game won't crash. To add a new release:
+1. Set `metallum_max_version` in `gradle.properties` to the new Modrinth version.
+2. Run `./gradlew build`, then `./gradlew runClient -Pmetallum_run_version=<new version>`. Any hook whose target
+   changed fails at startup with a mixin error naming the method.
+3. Update that hook so it works on every accepted version, and check `com/metallum/render/MetallumExtraBridge.java`
+   against the new source. The mod is compiled against the oldest accepted version, so it must only call Metallum
+   methods that all of them have; where they differ, branch on `MetallumVersion`.
+4. Launch once more on the oldest version (`./gradlew runClient`).
 
 ## Roadmap
 - **0.2:** shader warm-up and a persistent pipeline cache (compile everything from `runtime-pipelines` on the

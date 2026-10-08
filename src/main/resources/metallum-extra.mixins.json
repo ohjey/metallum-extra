@@ -18,7 +18,20 @@
     "RotatingSectionStorageMixin",
     "ShineBackendMixin",
     "SodiumChunkRendererMixin",
-    "SodiumNativeBufferMixin"
+    "SodiumNativeBufferMixin",
+    "shader.CardinalLightingShaderMixin",
+    "shader.GameRendererShaderMixin",
+    "shader.GameRenderStateShaderMixin",
+    "shader.LevelRendererShaderMixin",
+    "shader.MetalCrossShaderCompilerShaderMixin",
+    "shader.MetalDeviceShaderMixin",
+    "shader.SkyRendererShaderMixin",
+    "shader.SodiumBlockRendererShaderMixin",
+    "shader.SodiumChunkRendererInvoker",
+    "shader.SodiumChunkRendererShaderMixin",
+    "shader.SodiumFluidRendererShaderMixin",
+    "shader.SodiumMeshBufferShaderMixin",
+    "shader.SodiumWorldRendererShaderMixin"
   ],
   "injectors": {
     "defaultRequire": 1

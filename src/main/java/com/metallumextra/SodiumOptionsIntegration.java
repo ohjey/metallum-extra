@@ -18,9 +18,25 @@ public final class SodiumOptionsIntegration implements ConfigEntryPoint {
         builder.registerOwnModOptions()
                 .addPage(builder.createOptionPage()
                         .setName(Component.literal("Metallum Extra"))
+                        .addOptionGroup(shaderGroup(builder))
                         .addOptionGroup(group(builder, "Smoothness", Settings.smoothness()))
                         .addOptionGroup(group(builder, "Mod Compatibility", Settings.compatibility()))
                         .addOptionGroup(group(builder, "Troubleshooting", Settings.troubleshooting())));
+    }
+
+    private static OptionGroupBuilder shaderGroup(final ConfigBuilder builder) {
+        OptionGroupBuilder group = group(builder, "Shaders", Settings.shaders());
+        Settings.Choice<Quality> quality = Settings.shaderQuality();
+        group.addOption(builder.createEnumOption(Identifier.fromNamespaceAndPath("metallum-extra", quality.id()), Quality.class)
+                .setName(Component.literal(quality.name()))
+                .setTooltip(Component.literal(quality.tooltip()))
+                .setImpact(OptionImpact.valueOf(quality.impact().name()))
+                .setDefaultValue(Quality.MEDIUM)
+                .setElementNameProvider(value -> Component.literal(quality.label().apply(value)))
+                .setBinding(quality.setter(), quality.getter())
+                .setStorageHandler(() -> {
+                }));
+        return group;
     }
 
     private static OptionGroupBuilder group(final ConfigBuilder builder, final String name, final List<Settings.Toggle> toggles) {

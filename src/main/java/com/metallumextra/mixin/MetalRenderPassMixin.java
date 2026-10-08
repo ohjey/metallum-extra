@@ -4,7 +4,11 @@ import com.metallum.mtl.MTLRenderCommandEncoder;
 import com.metallumextra.FrameProfiler;
 import com.metallumextra.MultiTarget;
 import com.metallumextra.SamplerSlots;
+import com.metallumextra.shader.ShaderBindings;
+import com.metallumextra.shader.Shaders;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.systems.RenderPassBackend;
 import com.mojang.blaze3d.textures.GpuTextureView;
 import org.joml.Vector4fc;
 import org.jspecify.annotations.Nullable;
@@ -27,6 +31,9 @@ import java.lang.foreign.MemorySegment;
  * <p>
  * Multiple render targets: a Metallum 0.0.23 pass knows one color target. The extra ones are kept here, and a
  * pass that has any gets its Metal encoder from {@link MultiTarget.Encoder} instead of from Metallum.
+ * <p>
+ * Shaders: a pipeline whose shaders read the shader pipeline's own uniform block or textures is handed them
+ * here, since whoever is drawing with it does not know they exist (see {@link ShaderBindings}).
  */
 @Mixin(targets = "com.metallum.render.MetalRenderPass", remap = false)
 public abstract class MetalRenderPassMixin implements MultiTarget.Pass {
@@ -48,6 +55,10 @@ public abstract class MetalRenderPassMixin implements MultiTarget.Pass {
     @Unique
     private int metallumExtra$attachedTargets;
 
+    /** Shaders: draws with the pipeline that is set now are dropped (see {@link ShaderBindings#skipsDraws}). */
+    @Unique
+    private boolean metallumExtra$skipDraws;
+
     /** The sampler renumbering of the pipeline that is bound now; null for nearly every pipeline. */
     @Unique
     private byte @Nullable [] metallumExtra$samplerSlots;
@@ -58,6 +69,16 @@ public abstract class MetalRenderPassMixin implements MultiTarget.Pass {
     @Shadow
     private static void bindTextureAndSampler(final MTLRenderCommandEncoder encoder, final MemorySegment texture, final MemorySegment sampler, final long index, final int stageMask) {
         throw new AssertionError();
+    }
+
+    @Inject(method = "setPipeline", at = @At("HEAD"))
+    private void metallumExtra$pipelineSet(final RenderPipeline pipeline, final CallbackInfo ci) {
+        this.metallumExtra$skipDraws = Shaders.active() && ShaderBindings.skipsDraws(pipeline);
+    }
+
+    @Inject(method = {"draw", "drawIndexed", "drawIndirect", "drawIndexedIndirect", "drawMultipleIndexed", "multiDrawIndexed"}, at = @At("HEAD"), cancellable = true)
+    private void metallumExtra$skipDraw(final CallbackInfo ci) {
+        if (this.metallumExtra$skipDraws) ci.cancel();
     }
 
     @Inject(method = "drawIndexedIndirect", at = @At("HEAD"))
@@ -110,6 +131,8 @@ public abstract class MetalRenderPassMixin implements MultiTarget.Pass {
             at = @At(value = "INVOKE", target = "Lcom/metallum/render/MetalCompiledRenderPipeline;getNativePipeline(Z)Ljava/lang/foreign/MemorySegment;"))
     private MemorySegment metallumExtra$pipelineForAttachedTargets(final @Coerce Object pipeline, final boolean depth) {
         this.metallumExtra$samplerSlots = ((SamplerSlots.Pipeline) pipeline).metallumExtra$samplerSlots();
+        int shaderBindings = ((ShaderBindings.Pipeline) pipeline).metallumExtra$shaderBindings();
+        if (shaderBindings != 0) ShaderBindings.bind((RenderPassBackend) (Object) this, shaderBindings);
         return ((MultiTarget.Pipeline) pipeline).metallumExtra$nativePipeline(depth, this.metallumExtra$attachedTargets);
     }
 

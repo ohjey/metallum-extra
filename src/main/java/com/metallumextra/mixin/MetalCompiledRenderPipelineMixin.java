@@ -11,6 +11,7 @@ import com.metallumextra.ExtraConfig;
 import com.metallumextra.MetallumExtra;
 import com.metallumextra.MultiTarget;
 import com.metallumextra.SamplerSlots;
+import com.metallumextra.shader.ShaderBindings;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.jspecify.annotations.Nullable;
@@ -29,10 +30,11 @@ import java.lang.foreign.MemorySegment;
  * For a pipeline that declares more, add the rest, and keep what is needed to build it again for a pass that
  * leaves some of those targets unattached.
  * <p>
- * Also holds the pipeline's sampler renumbering, if it needed one (see {@link SamplerSlots}).
+ * Also holds the pipeline's sampler renumbering, if it needed one (see {@link SamplerSlots}), and which of the
+ * shader pipeline's own uniform block and textures its shaders read (see {@link ShaderBindings}).
  */
 @Mixin(targets = "com.metallum.render.MetalCompiledRenderPipeline", remap = false)
-public abstract class MetalCompiledRenderPipelineMixin implements MultiTarget.Pipeline, SamplerSlots.Pipeline {
+public abstract class MetalCompiledRenderPipelineMixin implements MultiTarget.Pipeline, SamplerSlots.Pipeline, ShaderBindings.Pipeline {
     @Unique
     private MetallumExtraTargets.@Nullable Templates metallumExtra$templates;
     /** Native pipelines for target combinations other than "all attached", keyed by attached mask and depth. */
@@ -41,6 +43,9 @@ public abstract class MetalCompiledRenderPipelineMixin implements MultiTarget.Pi
 
     @Unique
     private byte @Nullable [] metallumExtra$samplerSlots;
+
+    @Unique
+    private int metallumExtra$shaderBindings;
 
     @Shadow
     abstract MemorySegment getNativePipeline(boolean depth);
@@ -67,6 +72,13 @@ public abstract class MetalCompiledRenderPipelineMixin implements MultiTarget.Pi
     private void metallumExtra$adoptTemplates(final CallbackInfo ci, @Local(argsOnly = true) final RenderPipeline pipeline) {
         this.metallumExtra$templates = MetallumExtraTargets.take(pipeline);
         this.metallumExtra$samplerSlots = MetallumExtraBridge.samplerSlots(this);
+        this.metallumExtra$shaderBindings = MetallumExtraBridge.resourceMask(this, ShaderBindings.NAMES);
+        ShaderBindings.record(pipeline, this.metallumExtra$shaderBindings);
+    }
+
+    @Override
+    public int metallumExtra$shaderBindings() {
+        return this.metallumExtra$shaderBindings;
     }
 
     @Override

@@ -1,5 +1,7 @@
 package com.metallumextra;
 
+import com.metallumextra.shader.Shaders;
+
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -16,13 +18,73 @@ public final class Settings {
             this(id, name, tooltip, impact, needsRestart, getter, setter, true);
         }
 
-        /** Everything is on by default except performance logging. */
+        /** Everything is on by default except performance logging and the shaders' master switch. */
         public boolean defaultValue() {
-            return !id.equals("profiler");
+            return !id.equals("profiler") && !id.equals("shaders");
         }
     }
 
+    /** A choice among several values, shown as a cycling button. */
+    public record Choice<E extends Enum<E>>(String id, String name, String tooltip, Impact impact, Class<E> type,
+                                           java.util.function.Supplier<E> getter, Consumer<E> setter, java.util.function.Function<E, String> label) {
+    }
+
     private Settings() {
+    }
+
+    /** The shader quality preset. */
+    public static Choice<Quality> shaderQuality() {
+        ExtraConfig c = ExtraConfig.get();
+        return new Choice<>("shader_quality", "Shader Quality",
+                "A preset for the shader settings below. Low: shadows at a short distance, no reflections, no "
+                        + "ambient occlusion. Medium: shadows, reflections and ambient occlusion. High: everything, "
+                        + "with sun rays and shadows further out. Ultra: the sharpest and furthest shadows, for the "
+                        + "strongest machines. Changing a setting below afterwards makes this read Custom.",
+                Impact.VARIES, Quality.class, c::shaderQuality, c::setShaderQuality, quality -> quality.label);
+    }
+
+    /** The built-in shader pipeline. All of these switch on and off immediately. */
+    public static List<Toggle> shaders() {
+        ExtraConfig c = ExtraConfig.get();
+        String blocked = Shaders.unavailableReason();
+        return List.of(
+                new Toggle("shaders", "Shaders (Experimental)",
+                        (blocked == null ? "" : "NOT AVAILABLE: " + blocked + " ")
+                                + "EXPERIMENTAL. Metallum Extra's own lighting: sunlight and moonlight with shadows, "
+                                + "sun rays, a new sky, water that reflects, colored light from torches and lava, and a "
+                                + "glow around bright things. Needs Sodium. The game pauses for a moment when this is "
+                                + "switched, while chunks are rebuilt.",
+                        Impact.HIGH, false, () -> c.shadersEnabled, c::setShadersEnabled, blocked == null),
+                new Toggle("shader_shadows", "Shadows",
+                        "The sun and moon cast shadows. This draws the nearby world a second time each frame, so "
+                                + "it is the most expensive shader setting. Only applies while Shaders is on.",
+                        Impact.HIGH, false, () -> c.shaderShadows, c::setShaderShadows),
+                new Toggle("shader_bloom", "Glow",
+                        "A soft glow around bright things such as the sun, lava and torches. Only applies while "
+                                + "Shaders is on.",
+                        Impact.LOW, false, () -> c.shaderBloom, c::setShaderBloom),
+                new Toggle("shader_reflections", "Water Reflections",
+                        "Water reflects the land and sky around it. Only applies while Shaders is on.",
+                        Impact.MEDIUM, false, () -> c.shaderWaterReflections, c::setShaderWaterReflections),
+                new Toggle("shader_waving", "Moving Water and Plants",
+                        "Water ripples, and leaves and plants sway in the wind. Only applies while Shaders is on.",
+                        Impact.LOW, false, () -> c.shaderWaving, c::setShaderWaving),
+                new Toggle("shader_sun_rays", "Sun Rays",
+                        "Shafts of sunlight through trees, cave openings and morning haze. Only applies while "
+                                + "Shaders and Shadows are on.",
+                        Impact.MEDIUM, false, () -> c.shaderSunRays, c::setShaderSunRays),
+                new Toggle("shader_ambient_occlusion", "Ambient Occlusion",
+                        "Corners, crevices and the ground under things are a little darker, which makes the world "
+                                + "look less flat. Only applies while Shaders is on.",
+                        Impact.MEDIUM, false, () -> c.shaderAmbientOcclusion, c::setShaderAmbientOcclusion),
+                new Toggle("shader_colored_light", "Colored Light",
+                        "Torches glow orange, soul fire blue, sea lanterns teal, amethyst purple, and so on, and they "
+                                + "color what they light. Only applies while Shaders is on.",
+                        Impact.LOW, false, () -> c.shaderColoredLight, c::setShaderColoredLight),
+                new Toggle("shader_smooth_edges", "Smooth Edges",
+                        "Blends away the stair steps along the edges of blocks, leaves and far-off terrain. Only "
+                                + "applies while Shaders is on.",
+                        Impact.LOW, false, () -> c.shaderSmoothEdges, c::setShaderSmoothEdges));
     }
 
     /** Stutter and frame-rate fixes. All of these switch on and off immediately. */

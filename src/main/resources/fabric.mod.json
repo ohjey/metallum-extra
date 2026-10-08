@@ -3,8 +3,13 @@
   "id": "metallum-extra",
   "version": "${version}",
   "name": "Metallum Extra",
-  "description": "Add-on for Metallum: frame-hitch profiler and stutter fixes for the Metal backend on Apple Silicon.",
-  "authors": ["Metallum Extra contributors"],
+  "description": "Add-on for Metallum: built-in shaders (sun shadows, lit water, glow), stutter fixes and a frame-hitch profiler for the Metal backend on Apple Silicon.",
+  "authors": ["ohjey"],
+  "contact": {
+    "homepage": "https://github.com/ohjey/metallum-extra",
+    "sources": "https://github.com/ohjey/metallum-extra",
+    "issues": "https://github.com/ohjey/metallum-extra/issues"
+  },
   "license": "MIT",
   "environment": "client",
   "entrypoints": {

@@ -58,7 +58,7 @@ public final class ExtraConfigScreen extends Screen {
         repositionElements();
     }
 
-    private static CycleButton<Boolean> button(final Settings.Toggle toggle) {
+    static CycleButton<Boolean> button(final Settings.Toggle toggle) {
         String name = toggle.needsRestart() ? toggle.name() + "*" : toggle.name();
         CycleButton<Boolean> button = CycleButton.onOffBuilder(toggle.getter().getAsBoolean())
                 .withTooltip(v -> Tooltip.create(Component.literal(toggle.tooltip())))
@@ -67,7 +67,7 @@ public final class ExtraConfigScreen extends Screen {
         return button;
     }
 
-    private static <E extends Enum<E>> CycleButton<E> choice(final Settings.Choice<E> choice) {
+    static <E extends Enum<E>> CycleButton<E> choice(final Settings.Choice<E> choice) {
         return CycleButton.<E>builder(value -> Component.literal(choice.label().apply(value)), choice.getter())
                 .withValues(choice.type().getEnumConstants())
                 .withTooltip(v -> Tooltip.create(Component.literal(choice.tooltip())))

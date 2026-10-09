@@ -1,6 +1,9 @@
 package com.metallum.render;
 
+import com.metallumextra.ExtraConfig;
 import com.metallumextra.SamplerSlots;
+import com.metallumextra.shader.pack.TranslationCache;
+import com.mojang.blaze3d.GpuFormat;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.textures.GpuTexture;
 import com.mojang.blaze3d.textures.GpuTextureView;
@@ -9,6 +12,7 @@ import org.jspecify.annotations.Nullable;
 import java.lang.foreign.MemorySegment;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /**
@@ -97,5 +101,58 @@ public final class MetallumExtraBridge {
         int[] grown = Arrays.copyOf(values, values.length + 1);
         grown[values.length] = value;
         return grown;
+    }
+
+    /** Set to anything to convert every shader every time, as Metallum does by itself. */
+    private static final boolean NO_MSL_CACHE = System.getProperty("metallumextra.noMslCache") != null;
+    private static volatile @Nullable String cacheSalt;
+
+    /** The cache key of the conversion in progress on this thread, kept from {@link #cachedTranslation} to {@link #storeTranslation}. */
+    private static final ThreadLocal<String> PENDING_KEY = new ThreadLocal<>();
+
+    /**
+     * Start of Metallum's {@code spirvToMsl}: the result of a conversion already done, read back from the disk cache
+     * (see {@link TranslationCache}), or null if SPIRV-Cross has to run.
+     */
+    public static @Nullable Object cachedTranslation(final ByteBuffer spirv, final int pushConstantBinding, final Map<String, GpuFormat> attributeFormats,
+                                                     final boolean enableFragDepth) {
+        PENDING_KEY.remove();
+        if (NO_MSL_CACHE) return null;
+        String key = TranslationCache.key(salt(), spirv, pushConstantBinding, attributeFormats, enableFragDepth);
+        TranslationCache.Msl cached = TranslationCache.shared().lookup(key);
+        if (cached != null) {
+            return new MetalCrossShaderCompiler.MslShader(cached.source(), cached.hasPushConstants(), cached.activeResources());
+        }
+        PENDING_KEY.set(key);
+        return null;
+    }
+
+    /** End of {@code spirvToMsl}: keeps what SPIRV-Cross made, if {@link #cachedTranslation} found nothing. */
+    public static void storeTranslation(final @Nullable Object result) {
+        String key = PENDING_KEY.get();
+        if (key == null || !(result instanceof MetalCrossShaderCompiler.MslShader converted)) return;
+        PENDING_KEY.remove();
+        TranslationCache.shared().store(key, new TranslationCache.Msl(converted.source(), converted.hasPushConstants(), converted.activeResources()));
+    }
+
+    /**
+     * The things besides the shader that decide what the conversion gives: this mod and Metallum (which sets the
+     * conversion's options and numbers the resources), SPIRV-Cross as shipped with LWJGL, and the one setting of this
+     * mod that changes the text (see {@link SamplerSlots}).
+     */
+    private static String salt() {
+        String salt = cacheSalt;
+        if (salt == null) {
+            salt = "extra=" + version("metallum-extra") + ";metallum=" + version("metallum")
+                    + ";lwjgl=" + org.lwjgl.Version.getVersion() + ";manyTextures=" + ExtraConfig.get().manyTextures;
+            cacheSalt = salt;
+        }
+        return salt;
+    }
+
+    private static String version(final String modId) {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(modId)
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("?");
     }
 }

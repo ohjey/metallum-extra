@@ -1,26 +1,28 @@
 package com.metallumextra.shader;
 
 import com.metallumextra.MetallumExtra;
+import com.metallumextra.shader.pack.BuiltinPack;
+import com.metallumextra.shader.pack.PackManager;
+import com.metallumextra.shader.pack.ShaderPack;
 import com.mojang.blaze3d.shaders.ShaderSource;
 import com.mojang.blaze3d.shaders.ShaderType;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The GLSL this mod ships, looked up by the same id the game or Sodium asks its own shaders by.
+ * The GLSL of the shader pack in use, looked up by the same id the game or Sodium asks its own shaders by. The pack
+ * is the built-in one (the jar) or a ZIP in the shaderpacks folder; see {@link PackManager}. Nothing is ever taken
+ * from any pack but the one in use.
  * <p>
- * Two kinds of file live under {@code assets/metallum-extra/shaders/}:
+ * Two kinds of file live under a pack's {@code shaders/} folder (for the built-in pack,
+ * {@code assets/metallum-extra/shaders/}):
  * <ul>
  * <li>{@code override/<namespace>/<path>.vsh|.fsh} replaces the shader another mod or the game registered under
  * {@code <namespace>:<path>} while shaders are on. The pipeline stays theirs; only its text changes.</li>
@@ -31,14 +33,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code #version} line, since the game inserts a pipeline's defines right after the first line.
  */
 public final class ShaderSources {
-    private static final String ROOT = "/assets/metallum-extra/shaders/";
-    /** Development aid: read the shaders from this folder instead of the jar, so they can be edited while the game runs. */
-    private static final @Nullable Path DEV_DIR = devDir();
-
     /** Development aid: every shader the game compiles (as other mods left it) is written to this folder. */
     private static final @Nullable Path DUMP_DIR = dir("metallumextra.dumpShaders");
 
-    private static final Map<String, Optional<String>> CACHE = new ConcurrentHashMap<>();
+    /** What has been read from one pack. A new one replaces it whenever the pack changes, so a stale entry cannot outlive its pack. */
+    private record Lookup(ShaderPack pack, Map<String, Optional<String>> files) {
+    }
+
+    private static volatile Lookup lookup = new Lookup(new BuiltinPack(), new ConcurrentHashMap<>());
 
     private ShaderSources() {
     }
@@ -53,57 +55,33 @@ public final class ShaderSources {
     }
 
     public static @Nullable String get(final Identifier id, final ShaderType type) {
+        PackManager.start();
+        Lookup current = lookup;
         String extension = type == ShaderType.VERTEX ? ".vsh" : ".fsh";
-        String file = id.getNamespace().equals(MetallumExtra.MOD_ID)
+        boolean ours = id.getNamespace().equals(MetallumExtra.MOD_ID);
+        String file = ours
                 ? "program/" + id.getPath() + extension
                 : "override/" + id.getNamespace() + "/" + id.getPath() + extension;
-        return CACHE.computeIfAbsent(file, ShaderSources::load).orElse(null);
+        String text = current.files.computeIfAbsent(file, f -> Optional.ofNullable(readExpanded(current.pack, f))).orElse(null);
+        // A shader of this mod's own passes that the pack lacks cannot be borrowed from anywhere else.
+        if (text == null && ours) {
+            throw new IllegalStateException("Shader pack " + current.pack.name() + " has no " + file);
+        }
+        return text;
     }
 
+    /** Use this pack's files from now on. */
+    public static void use(final ShaderPack pack) {
+        lookup = new Lookup(pack, new ConcurrentHashMap<>());
+    }
+
+    /** Forget what was read, so the files are read again. */
     public static void clear() {
-        CACHE.clear();
+        use(lookup.pack);
     }
 
-    private static Optional<String> load(final String file) {
-        String text = read(file);
-        if (text == null) return Optional.empty();
-        StringBuilder out = new StringBuilder(text.length() + 4096);
-        expand(text, file, out, new HashSet<>());
-        return Optional.of(out.toString());
-    }
-
-    /** Each library file goes in once per shader, however many of the files it includes ask for it. */
-    private static void expand(final String text, final String file, final StringBuilder out, final Set<String> included) {
-        for (String line : text.split("\n", -1)) {
-            String trimmed = line.trim();
-            if (trimmed.startsWith("#include")) {
-                int open = trimmed.indexOf('"');
-                int close = trimmed.lastIndexOf('"');
-                if (open < 0 || close <= open) throw new IllegalStateException("Bad #include in " + file + ": " + line);
-                String name = "lib/" + trimmed.substring(open + 1, close);
-                if (!included.add(name)) continue;
-                String library = read(name);
-                if (library == null) throw new IllegalStateException("Missing shader include " + name + " (from " + file + ")");
-                expand(library, name, out, included);
-            } else {
-                out.append(line).append('\n');
-            }
-        }
-    }
-
-    private static @Nullable String read(final String file) {
-        try {
-            if (DEV_DIR != null) {
-                Path path = DEV_DIR.resolve(file);
-                return Files.isRegularFile(path) ? Files.readString(path) : null;
-            }
-            try (InputStream in = ShaderSources.class.getResourceAsStream(ROOT + file)) {
-                return in == null ? null : new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            }
-        } catch (IOException e) {
-            MetallumExtra.LOGGER.error("[Metallum Extra] Could not read shader {}", file, e);
-            return null;
-        }
+    private static @Nullable String readExpanded(final ShaderPack pack, final String file) {
+        return pack.read(file) == null ? null : pack.load(file);
     }
 
     private static void dump(final Identifier id, final ShaderType type, final @Nullable String text) {
@@ -122,9 +100,5 @@ public final class ShaderSources {
     private static @Nullable Path dir(final String property) {
         String dir = System.getProperty(property);
         return dir == null || dir.isBlank() ? null : Path.of(dir);
-    }
-
-    private static @Nullable Path devDir() {
-        return dir("metallumextra.shaderDir");
     }
 }

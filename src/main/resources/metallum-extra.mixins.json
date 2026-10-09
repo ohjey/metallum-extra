@@ -13,6 +13,7 @@
     "MetalRenderPassMixin",
     "MetalSurfaceMixin",
     "MTLBuiltinPipelinesMixin",
+    "OptionsKeysMixin",
     "MTLCommandBufferMixin",
     "MTLDeviceMixin",
     "RotatingSectionStorageMixin",

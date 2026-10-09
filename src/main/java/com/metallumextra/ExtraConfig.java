@@ -61,6 +61,10 @@ public final class ExtraConfig {
     public volatile boolean shaderColoredLight;
     /** Stair-stepped edges are smoothed. */
     public volatile boolean shaderSmoothEdges;
+    /** A line in the chat when shaders are reloaded with the key. */
+    public volatile boolean shaderMessages;
+    /** The shader pack in use: the file name of a ZIP in the shaderpacks folder, or {@code builtin}. Kept while shaders are off. */
+    public volatile String shaderPack;
     /** Width and height of the shadow map in pixels. File only. */
     public volatile int shadowResolution;
     /** How far from the player shadows are drawn, in chunks. File only. */
@@ -93,6 +97,9 @@ public final class ExtraConfig {
         this.shaderAmbientOcclusion = bool(p, "shaders.ambientOcclusion", true);
         this.shaderColoredLight = bool(p, "shaders.coloredLight", true);
         this.shaderSmoothEdges = bool(p, "shaders.smoothEdges", true);
+        this.shaderMessages = bool(p, "shaders.messages", true);
+        String pack = p.getProperty("shaders.pack", "builtin").strip();
+        this.shaderPack = pack.isEmpty() ? "builtin" : pack;
         this.shadowResolution = clampShadowResolution((int) dbl(p, "shaders.shadowResolution", 2048));
         this.shadowDistance = Math.clamp((int) dbl(p, "shaders.shadowDistance", 6), 2, 32);
         this.sunPathRotation = Math.clamp((int) dbl(p, "shaders.sunPathRotation", 0), -60, 60);
@@ -163,6 +170,17 @@ public final class ExtraConfig {
     public void setShaderColoredLight(final boolean value) {
         this.shaderColoredLight = value;
         save(file);
+    }
+
+    public void setShaderMessages(final boolean value) {
+        this.shaderMessages = value;
+        save(file);
+    }
+
+    public void setShaderPack(final String value) {
+        this.shaderPack = value;
+        save(file);
+        MetallumExtra.LOGGER.info("[Metallum Extra] shaderPack={}", value);
     }
 
     public void setShaderSmoothEdges(final boolean value) {
@@ -259,6 +277,9 @@ public final class ExtraConfig {
                 # reflections, sun rays, and glow around bright things. Off by default. The Quality setting in
                 # game (Low, Medium, High, Ultra) writes the values below; Medium is the default.
                 shaders.enabled=%s
+                # The shader pack in use: the file name of a ZIP in the shaderpacks folder, or builtin. Choose
+                # one in game under Shader Packs. Switching shaders off does not forget it.
+                shaders.pack=%s
                 shaders.shadows=%s
                 shaders.bloom=%s
                 shaders.waterReflections=%s
@@ -267,6 +288,8 @@ public final class ExtraConfig {
                 shaders.ambientOcclusion=%s
                 shaders.coloredLight=%s
                 shaders.smoothEdges=%s
+                # Say "Shaders reloaded" in the chat when the reload key is pressed.
+                shaders.messages=%s
                 # Shadow sharpness: 1024, 2048 or 4096. Higher is sharper and slower.
                 shaders.shadowResolution=%d
                 # How far from you shadows are drawn, in chunks (2-32). Further is slower and blurrier.
@@ -314,7 +337,7 @@ public final class ExtraConfig {
                 # is out of bounds"). This renumbers the samplers of such shaders. Others are untouched.
                 compat.manyTextures=%s
                 """.formatted(profilerEnabled, hitchMinMs, hitchMultiplier, summarySeconds, maxHitchLogsPerSummary,
-                shadersEnabled, shaderShadows, shaderBloom, shaderWaterReflections, shaderWaving, shaderSunRays, shaderAmbientOcclusion, shaderColoredLight, shaderSmoothEdges, shadowResolution, shadowDistance, sunPathRotation, directBufferUpload, nonBlockingPresent, fastSectionRecenter, spreadSodiumCleanup,
+                shadersEnabled, shaderPack.replace("\\", "\\\\"), shaderShadows, shaderBloom, shaderWaterReflections, shaderWaving, shaderSunRays, shaderAmbientOcclusion, shaderColoredLight, shaderSmoothEdges, shaderMessages, shadowResolution, shadowDistance, sunPathRotation, directBufferUpload, nonBlockingPresent, fastSectionRecenter, spreadSodiumCleanup,
                 distantHorizonsSupport, shineSupport, multipleRenderTargets, manyTextures);
         try {
             Files.createDirectories(file.getParent());

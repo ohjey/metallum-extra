@@ -36,11 +36,12 @@ public final class ExtraConfigScreen extends Screen {
         GridLayout grid = rows.addChild(new GridLayout());
         grid.defaultCellSetting().padding(3);
         GridLayout.RowHelper cells = grid.createRowHelper(2);
-        cells.addChild(choice(Settings.shaderQuality()));
-        for (Settings.Toggle toggle : Settings.shaders()) {
+        cells.addChild(Button.builder(Component.literal("Shaders..."), button -> minecraft.gui.setScreen(new ShaderPackScreen(this)))
+                .width(BUTTON_WIDTH).tooltip(Tooltip.create(Component.literal("Choose a shader pack, switch shaders on or off, and set how they look."))).build());
+        for (Settings.Toggle toggle : Settings.smoothness()) {
             cells.addChild(button(toggle));
         }
-        for (Settings.Toggle toggle : Settings.smoothness()) {
+        for (Settings.Toggle toggle : Settings.messages()) {
             cells.addChild(button(toggle));
         }
         for (Settings.Toggle toggle : Settings.compatibility()) {
@@ -58,7 +59,7 @@ public final class ExtraConfigScreen extends Screen {
         repositionElements();
     }
 
-    private static CycleButton<Boolean> button(final Settings.Toggle toggle) {
+    static CycleButton<Boolean> button(final Settings.Toggle toggle) {
         String name = toggle.needsRestart() ? toggle.name() + "*" : toggle.name();
         CycleButton<Boolean> button = CycleButton.onOffBuilder(toggle.getter().getAsBoolean())
                 .withTooltip(v -> Tooltip.create(Component.literal(toggle.tooltip())))
@@ -67,7 +68,7 @@ public final class ExtraConfigScreen extends Screen {
         return button;
     }
 
-    private static <E extends Enum<E>> CycleButton<E> choice(final Settings.Choice<E> choice) {
+    static <E extends Enum<E>> CycleButton<E> choice(final Settings.Choice<E> choice) {
         return CycleButton.<E>builder(value -> Component.literal(choice.label().apply(value)), choice.getter())
                 .withValues(choice.type().getEnumConstants())
                 .withTooltip(v -> Tooltip.create(Component.literal(choice.tooltip())))

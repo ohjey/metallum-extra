@@ -2,6 +2,9 @@ package com.metallumextra.shader;
 
 import com.metallumextra.ExtraConfig;
 import com.metallumextra.MetallumExtra;
+import com.metallumextra.ShaderKeys;
+import com.metallumextra.shader.pack.PackManager;
+import com.metallumextra.shader.pack.TranslationCache;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.loader.api.FabricLoader;
@@ -128,9 +131,17 @@ public final class Shaders {
         }
         // Not while the game is still loading: until its resources are in, a pipeline thrown away here cannot be
         // compiled again, since the shader text it was built from is not there to ask for yet.
-        if (wanted != active && Minecraft.getInstance().isGameLoadFinished() && Minecraft.getInstance().gui.overlay() == null) {
-            setActive(wanted);
+        if (Minecraft.getInstance().isGameLoadFinished() && Minecraft.getInstance().gui.overlay() == null) {
+            // A pack chosen in the menu, or put aside because it was broken, takes effect here, between frames.
+            boolean packChanged = PackManager.commitPending();
+            if (wanted != active) {
+                setActive(wanted);
+            } else if (packChanged && active) {
+                switchPack();
+            }
         }
+        TranslationCache.logIfSettled();
+        ShaderKeys.tick(Minecraft.getInstance());
         if (active) {
             TARGETS.prepare(Minecraft.getInstance().gameRenderer.mainRenderTarget());
             LIGHT_COLORS.ensure();
@@ -158,6 +169,17 @@ public final class Shaders {
             minecraft.levelExtractor.allChanged();
         }
         MetallumExtra.LOGGER.info("[Metallum Extra] Shaders {}", value ? "on" : "off");
+    }
+
+    /**
+     * Another shader pack is in use: every compiled pipeline is thrown away, and the new pack's shaders are compiled as
+     * they are first needed. What was converted to Metal text before stays in the disk cache. Chunk meshes are kept;
+     * they do not depend on the pack.
+     */
+    private static void switchPack() {
+        ShaderSources.clear();
+        ShaderBindings.forget();
+        RenderSystem.getDevice().clearPipelineCache();
     }
 
     /** Asks for the shaders to be read and compiled again; used after a setting that is baked into them changes. */

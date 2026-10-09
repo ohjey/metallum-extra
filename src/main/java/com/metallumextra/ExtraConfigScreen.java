@@ -36,11 +36,12 @@ public final class ExtraConfigScreen extends Screen {
         GridLayout grid = rows.addChild(new GridLayout());
         grid.defaultCellSetting().padding(3);
         GridLayout.RowHelper cells = grid.createRowHelper(2);
-        cells.addChild(choice(Settings.shaderQuality()));
-        for (Settings.Toggle toggle : Settings.shaders()) {
+        cells.addChild(Button.builder(Component.literal("Shaders..."), button -> minecraft.gui.setScreen(new ShaderPackScreen(this)))
+                .width(BUTTON_WIDTH).tooltip(Tooltip.create(Component.literal("Choose a shader pack, switch shaders on or off, and set how they look."))).build());
+        for (Settings.Toggle toggle : Settings.smoothness()) {
             cells.addChild(button(toggle));
         }
-        for (Settings.Toggle toggle : Settings.smoothness()) {
+        for (Settings.Toggle toggle : Settings.messages()) {
             cells.addChild(button(toggle));
         }
         for (Settings.Toggle toggle : Settings.compatibility()) {

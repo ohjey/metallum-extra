@@ -43,18 +43,11 @@ public final class Settings {
                 Impact.VARIES, Quality.class, c::shaderQuality, c::setShaderQuality, quality -> quality.label);
     }
 
-    /** The built-in shader pipeline. All of these switch on and off immediately. */
+    /** The shader settings, shown on the Shader Options screen. All of these switch on and off immediately; shaders themselves
+     * are switched on and off from the Shaders screen or its key. */
     public static List<Toggle> shaders() {
         ExtraConfig c = ExtraConfig.get();
-        String blocked = Shaders.unavailableReason();
         return List.of(
-                new Toggle("shaders", "Shaders (Experimental)",
-                        (blocked == null ? "" : "NOT AVAILABLE: " + blocked + " ")
-                                + "EXPERIMENTAL. Metallum Extra's own lighting: sunlight and moonlight with shadows, "
-                                + "sun rays, a new sky, water that reflects, colored light from torches and lava, and a "
-                                + "glow around bright things. Needs Sodium. The game pauses for a moment when this is "
-                                + "switched, while chunks are rebuilt.",
-                        Impact.HIGH, false, () -> c.shadersEnabled, c::setShadersEnabled, blocked == null),
                 new Toggle("shader_shadows", "Shadows",
                         "The sun and moon cast shadows. This draws the nearby world a second time each frame, so "
                                 + "it is the most expensive shader setting. Only applies while Shaders is on.",
@@ -85,6 +78,17 @@ public final class Settings {
                         "Blends away the stair steps along the edges of blocks, leaves and far-off terrain. Only "
                                 + "applies while Shaders is on.",
                         Impact.LOW, false, () -> c.shaderSmoothEdges, c::setShaderSmoothEdges));
+    }
+
+    /** What the shaders say in the chat. */
+    public static List<Toggle> messages() {
+        ExtraConfig c = ExtraConfig.get();
+        return List.of(
+                new Toggle("shader_messages", "Shader Chat Messages",
+                        "Lines in the chat from the shader keys and from shader packs: what was toggled or reloaded, "
+                                + "and why a pack could not be used. Off: the shaders never write to the chat (a "
+                                + "failure is still in the log and shown in the shader menu).",
+                        Impact.LOW, false, () -> c.shaderMessages, c::setShaderMessages));
     }
 
     /** Stutter and frame-rate fixes. All of these switch on and off immediately. */

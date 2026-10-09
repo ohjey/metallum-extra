@@ -25,6 +25,7 @@
     "shader.LevelRendererShaderMixin",
     "shader.MetalCrossShaderCompilerShaderMixin",
     "shader.MetalDeviceShaderMixin",
+    "shader.MetalRenderPassShaderMixin",
     "shader.SkyRendererShaderMixin",
     "shader.SodiumBlockRendererShaderMixin",
     "shader.SodiumChunkRendererInvoker",
